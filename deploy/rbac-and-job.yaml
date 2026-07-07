@@ -1,0 +1,99 @@
+# ── ServiceAccount ────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kasten-inspector
+  namespace: kasten-io
+---
+# ── ClusterRole (read-only) ───────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kasten-inspector
+rules:
+  - apiGroups: [""]
+    resources: [nodes, namespaces, pods, services, configmaps, secrets, persistentvolumeclaims, persistentvolumes]
+    verbs: [get, list]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets, statefulsets, daemonsets]
+    verbs: [get, list]
+  # RestorePoints live in app namespaces (not kasten-io) in K10 8.x
+  - apiGroups: [""]
+    resources: [namespaces]
+    verbs: [get, list]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get, list]
+  - apiGroups: [config.kio.kasten.io]
+    resources: [policies, policypresets, profiles, transformsets, blueprintbindings, clusterprofiles, licenses]
+    verbs: [get, list]
+  - apiGroups: [actions.kio.kasten.io]
+    resources: [runactions, backupactions, restoreactions, exportactions]
+    verbs: [get, list]
+  - apiGroups: [apps.kio.kasten.io]
+    resources: [applications, restorepoints, restorepointcontents]
+    verbs: [get, list]
+  - apiGroups: [dist.kio.kasten.io]
+    resources: [clusters, distributions, bootstraps]
+    verbs: [get, list]
+  - apiGroups: [reporting.kio.kasten.io]
+    resources: [reports]
+    verbs: [get, list]
+  - apiGroups: [cr.kanister.io]
+    resources: [blueprints]
+    verbs: [get, list]
+  - apiGroups: [kubevirt.io]
+    resources: [virtualmachines, kubevirts]
+    verbs: [get, list]
+  - apiGroups: [config.openshift.io]
+    resources: [clusterversions]
+    verbs: [get, list]
+  - apiGroups: [monitoring.coreos.com]
+    resources: [servicemonitors]
+    verbs: [get, list]
+  - apiGroups: [integreatly.org]
+    resources: [grafanadashboards]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kasten-inspector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kasten-inspector
+subjects:
+  - kind: ServiceAccount
+    name: kasten-inspector
+    namespace: kasten-io
+---
+# ── Job (sostituire <IMAGE> con l'immagine reale) ─────────────────────────────
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kasten-inspector
+  namespace: kasten-io
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      serviceAccountName: kasten-inspector
+      restartPolicy: Never
+      containers:
+        - name: kasten-inspector
+          image: <IMAGE>
+          args:
+            - --namespace=kasten-io
+            - --format=html,json,markdown
+            - --output-dir=/reports
+            - --job-limit=200
+          volumeMounts:
+            - name: reports
+              mountPath: /reports
+      volumes:
+        - name: reports
+          emptyDir: {}

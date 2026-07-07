@@ -1,0 +1,26 @@
+# Build output
+kasten-inspector
+dist/
+*.exe
+
+# Reports generated at runtime
+reports/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Go test cache
+*.test
+*.out
+coverage.html
+
+# Environment / secrets
+.env
+*.kubeconfig
+kubeconfig*

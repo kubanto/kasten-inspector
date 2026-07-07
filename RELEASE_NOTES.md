@@ -1,0 +1,86 @@
+# Release Notes — Kasten Inspector v1.3.0
+
+**Released:** 2026-06-24  
+**Repository:** https://github.com/kubanto/kasten-inspector  
+**Previous version:** v1.2.0
+
+---
+
+## Highlights
+
+### New "Health Check" tab
+
+All cluster and Kasten installation health information is now consolidated in a single dedicated tab: **Cluster info**, **License**, **Security** (auth + encryption), **K10 Resource Limits**, **Disaster Recovery status**, and **StorageClass & VSC Inventory**. No more hunting across multiple tabs to assess the health of an installation.
+
+### 8 new Best Practice checks (25 total)
+
+Built directly from the [Veeam Kasten Best Practices guide](https://docs.kasten.io/latest/references/best-practices):
+
+| ID | Check | Severity |
+|----|-------|----------|
+| BP-18 | Dashboard exposed via Ingress with HTTPS | warning |
+| BP-19 | VolumeSnapshotClass has Kasten annotation `k10.kasten.io/is-snapshot-class=true` | **critical** |
+| BP-20 | No policies with wildcard namespace selector | warning |
+| BP-21 | Dedicated policy for cluster-scoped resources | warning |
+| BP-22 | Location profiles use object storage (not NFS/SMB only) | warning |
+| BP-23 | PolicyPresets defined for retention standardization | info |
+| BP-24 | Catalog storage ≥50% free (upgrade prerequisite) | warning |
+| BP-25 | Prometheus alert rules (PrometheusRule CRs) configured | info |
+
+**BP-19** is particularly important: without the `k10.kasten.io/is-snapshot-class=true` annotation on VolumeSnapshotClasses, Kasten silently skips CSI snapshots — a common misconfiguration that is otherwise invisible.
+
+**BP-24** flags clusters at risk of failing a Kasten upgrade because the catalog PVC has less than 50% free space.
+
+### Reorganized report tabs
+
+The 7 tabs have been reorganized into 8, with clearer separation of concerns:
+
+| Tab | Content |
+|-----|---------|
+| Overview | Executive Summary, Best Practices alerts, Compliance & SLA |
+| **Health Check** ← new | Cluster, License, Security, Resource Limits, DR status, CSI inventory |
+| Protection | Policies, Applications, Profiles, KubeVirt, Coverage matrix |
+| Operations | Jobs, Restore Points, K10 Reports, Actions summary |
+| Storage | Storage Overview, Breakdown, **PVC status** (moved here) |
+| Configuration | Kanister Blueprints & TransformSets only |
+| Statistics & QBR | Unchanged |
+| Diagnostics | Recent Failures, Long-running Actions, Backup Recency |
+
+---
+
+## Breaking Changes
+
+None. All existing flags continue to work.
+
+---
+
+## Upgrade from v1.2
+
+Replace the binary and run as before. No other changes required.
+
+---
+
+## Download
+
+| Platform | Binary |
+|----------|--------|
+| macOS Apple Silicon | `kasten-inspector-darwin-arm64` |
+| macOS Intel | `kasten-inspector-darwin-amd64` |
+| Linux x86\_64 | `kasten-inspector-linux-amd64` |
+| Linux ARM64 | `kasten-inspector-linux-arm64` |
+| Windows x86\_64 | `kasten-inspector-windows-amd64.exe` |
+
+SHA256 checksums are provided in `checksums.txt`.
+
+---
+
+## Known Issues
+
+- K10 version is not detectable on OpenShift clusters using the Red Hat registry (image uses SHA digest instead of version tag).
+- Storage snapshot and export size metrics require the `k10-system-reports-policy` to have run at least once.
+- `IsClusterScoped` policy detection is based on `subType` field — may not detect all cluster-scoped policies depending on K10 version.
+
+---
+
+> ⚠️ This is an independent personal project — not an official Veeam product.  
+> No support, no SLA. Use at your own risk. See [DISCLAIMER.md](DISCLAIMER.md).

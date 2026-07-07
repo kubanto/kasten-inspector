@@ -1,0 +1,15 @@
+# ── Build stage ───────────────────────────────────────────────────────────────
+FROM golang:1.21-alpine AS builder
+WORKDIR /src
+COPY go.mod go.sum* ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w" \
+    -o /kasten-inspector ./cmd/
+
+# ── Final image (scratch = zero attack surface) ───────────────────────────────
+FROM scratch
+COPY --from=builder /kasten-inspector /kasten-inspector
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+ENTRYPOINT ["/kasten-inspector"]

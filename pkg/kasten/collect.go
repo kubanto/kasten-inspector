@@ -142,6 +142,10 @@ func CollectAll(c *cluster.Client, opts CollectOptions) (*Data, error) {
 	d.AppRiskMatrix = computeAppRiskMatrix(d)
 	d.WeeklySLATrend = computeWeeklySLA(d.Jobs)
 
+	// ── Job analytics (derived filter facets + per-policy failures) ───────────
+	d.FilterFacets = computeFilterFacets(d.Jobs)
+	d.FailuresByPolicy = computeFailuresByPolicy(d.Jobs)
+
 	return d, nil
 }
 

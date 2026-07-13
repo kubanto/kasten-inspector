@@ -393,6 +393,20 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
 .job-filter-btn{background:var(--s2);border:1px solid var(--b);color:var(--tm);padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
 .job-filter-btn.active,.job-filter-btn:hover{background:var(--b);color:var(--t)}
 .job-filter-btn.active{border-color:var(--kasten);color:var(--kasten)}
+.job-pdf-btn{background:var(--kasten);border:1px solid var(--kasten);color:#0b1e12;font-weight:600;padding:3px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.job-pdf-btn:hover{filter:brightness(1.08)}
+.print-only{display:none}
+@media print{
+  .no-print{display:none!important}
+  .tabpanel{display:none!important}
+  .tabpanel.active{display:block!important}
+  .tscroll{max-height:none!important;overflow:visible!important}
+  .print-only{display:block!important}
+  .sec{break-inside:avoid}
+  .page{max-width:none;padding:0}
+  html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #print-filter-summary{margin:0 0 12px;font-size:12px;color:var(--tm)}
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
@@ -962,33 +976,38 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
 <!-- ══ JOBS ══ -->
 <div class="sec" id="jobs">
   <div class="sec-hdr"><div class="sec-icon" style="background:rgba(88,166,255,.1)">⚡</div><h2>Recent Jobs</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box"><strong>run</strong>: orchestration job that triggers backup + export together. <strong>backup</strong>: creates a local snapshot. <strong>export</strong>: copies data to a location profile. <strong>Skipped</strong>: nothing changed since last run. Policy/App may be empty on run-type actions &mdash; this is normal in K10 8.x.</span></span><span class="sec-count">{{len .Kasten.Jobs}} collected</span></div>
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+  <div class="no-print" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
     <span style="font-size:11px;color:var(--tm)">Filter:</span>
     <button class="job-filter-btn" data-days="-1" onclick="filterJobsToday()">Today</button>
     <button class="job-filter-btn" data-days="0" onclick="filterJobs(0)">All time</button>
     <button class="job-filter-btn active" data-days="7" onclick="filterJobs(7)">Last 7 days</button>
     <button class="job-filter-btn" data-days="30" onclick="filterJobs(30)">Last 30 days</button>
     <button class="job-filter-btn" data-days="90" onclick="filterJobs(90)">Last 90 days</button>
-    <select id="job-status-filter" onchange="filterJobs(currentJobDays)" style="margin-left:4px;padding:3px 8px;font-size:11px;background:var(--s2);border:1px solid var(--b);border-radius:4px;color:var(--t)">
+    <select id="job-status-filter" onchange="applyCurrentFilter()" style="margin-left:4px;padding:3px 8px;font-size:11px;background:var(--s2);border:1px solid var(--b);border-radius:4px;color:var(--t)">
       <option value="">All statuses</option>
       <option value="Complete">Complete</option>
       <option value="Failed">Failed</option>
       <option value="Skipped">Skipped</option>
       <option value="Running">Running</option>
     </select>
+    <select id="job-policy-filter" onchange="applyCurrentFilter()" style="padding:3px 8px;font-size:11px;background:var(--s2);border:1px solid var(--b);border-radius:4px;color:var(--t)" title="Filter by policy name">
+      <option value="">All policies</option>
+    </select>
   </div>
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+  <div class="no-print" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
     <span style="font-size:11px;color:var(--tm)">Custom range:</span>
     <input type="date" id="job-date-from" style="padding:3px 8px;font-size:11px;background:var(--s2);border:1px solid var(--b);border-radius:4px;color:var(--t)" onchange="filterJobsRange()">
     <span style="font-size:11px;color:var(--tm)">→</span>
     <input type="date" id="job-date-to" style="padding:3px 8px;font-size:11px;background:var(--s2);border:1px solid var(--b);border-radius:4px;color:var(--t)" onchange="filterJobsRange()">
     <button class="job-filter-btn" onclick="clearJobRange()" style="font-size:10px">✕ Clear</button>
+    <button class="job-pdf-btn" onclick="exportJobsPDF()" title="Print / save the filtered jobs as PDF">⤓ Export PDF</button>
     <span id="job-count-label" style="font-size:11px;color:var(--tm);margin-left:auto"></span>
   </div>
+  <div id="print-filter-summary" class="print-only"></div>
 {{if .Kasten.Jobs}}
   <div class="twrap tscroll">
     <table><thead><tr><th>Action</th><th>Policy</th><th>Application</th><th>Status</th><th>Start</th><th>Duration</th><th>Error</th></tr></thead>
-    <tbody>{{range .Kasten.Jobs}}<tr class="job-row" data-start="{{.StartTime}}" data-status="{{.Status}}">
+    <tbody>{{range .Kasten.Jobs}}<tr class="job-row" data-start="{{.StartTime}}" data-status="{{.Status}}" data-policy="{{.PolicyName}}">
       <td style="color:var(--blue)">{{.Action}}</td>
       <td class="mono muted" style="font-size:11px">{{orDash .PolicyName}}</td>
       <td class="mono muted" style="font-size:11px">{{orDash .AppName}}</td>
@@ -1000,6 +1019,20 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   </div>
   {{else}}<div class="twrap"><div class="empty">No jobs found</div></div>{{end}}
 </div>
+
+<!-- ══ JOB EXECUTION TREND ══ -->
+{{if .Kasten.Jobs}}
+<div class="sec" id="job-trend">
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(88,166,255,.1)">📈</div><h2>Job Execution Trend</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Stacked view of job outcomes over time (Complete / Failed / Skipped). Switch the granularity between day, week and month. Reflects all collected jobs, independent of the Recent Jobs filters above.</span></span><span class="sec-count" id="jobtrend-count"></span></div>
+  <div class="no-print" style="display:flex;gap:6px;margin-bottom:10px;align-items:center">
+    <span style="font-size:11px;color:var(--tm)">Granularity:</span>
+    <button class="job-filter-btn active" data-gran="day" onclick="setJobTrendGran('day')">Day</button>
+    <button class="job-filter-btn" data-gran="week" onclick="setJobTrendGran('week')">Week</button>
+    <button class="job-filter-btn" data-gran="month" onclick="setJobTrendGran('month')">Month</button>
+  </div>
+  <div style="position:relative;height:240px"><canvas id="jobTrendChart" role="img" aria-label="Stacked bar: job execution outcomes over time">Job execution outcomes over time.</canvas></div>
+</div>
+{{end}}
 
 <!-- ══ RESTORE POINTS ══ -->
 <div class="sec" id="restorepoints">
@@ -1024,9 +1057,18 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   </div>
   {{if .Kasten.RestorePoints.Details}}
   <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin:16px 0 8px">Restore Point Detail</div>
+  <div class="no-print" style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--tm)">Filter:</span>
+    <button class="job-filter-btn" data-rpddays="-1" onclick="filterRPDetail(-1)">Today</button>
+    <button class="job-filter-btn active" data-rpddays="0" onclick="filterRPDetail(0)">All time</button>
+    <button class="job-filter-btn" data-rpddays="7" onclick="filterRPDetail(7)">Last 7 days</button>
+    <button class="job-filter-btn" data-rpddays="30" onclick="filterRPDetail(30)">Last 30 days</button>
+    <button class="job-filter-btn" data-rpddays="90" onclick="filterRPDetail(90)">Last 90 days</button>
+    <span id="rpd-count" style="font-size:11px;color:var(--tm);margin-left:auto"></span>
+  </div>
   <div class="twrap tscroll">
     <table><thead><tr><th>Name</th><th>Application</th><th>Created</th><th>Policy</th></tr></thead>
-    <tbody>{{range .Kasten.RestorePoints.Details}}<tr>
+    <tbody>{{range .Kasten.RestorePoints.Details}}<tr class="rpd-row" data-rpddate="{{.CreatedAt}}">
       <td class="mono" style="font-size:11px">{{.Name}}</td>
       <td class="mono muted">{{orDash .AppName}}</td>
       <td class="mono muted" style="font-size:11px;white-space:nowrap">{{formatTimeShort .CreatedAt}}</td>
@@ -1048,9 +1090,11 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   </div>
   <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center">
     <span style="font-size:11px;color:var(--tm)">Show:</span>
+    <button class="job-filter-btn" data-rptdays="-1" onclick="filterReports(-1)">Today</button>
+    <button class="job-filter-btn" data-rptdays="7" onclick="filterReports(7)">Last 7 days</button>
     <button class="job-filter-btn" data-rptdays="30" onclick="filterReports(30)">Last 30 days</button>
     <button class="job-filter-btn" data-rptdays="90" onclick="filterReports(90)">Last 90 days</button>
-    <button class="job-filter-btn" data-rptdays="0" onclick="filterReports(0)">All time</button>
+    <button class="job-filter-btn active" data-rptdays="0" onclick="filterReports(0)">All time</button>
   </div>
   <div class="twrap tscroll">
     <table><thead><tr><th>Report Name</th><th>Generated</th><th>Period</th><th>Apps</th><th>Actions</th><th>Completed</th><th>Failed</th><th>Snapshot</th><th>Export</th><th>Dedup</th></tr></thead>
@@ -1516,78 +1560,100 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
       var panel = document.getElementById(target);
       if(panel) panel.classList.add('active');
       window.scrollTo(0,0);
-      // Re-apply job filter when switching to Operations tab
-      if(target === 'tab-operations' && typeof filterJobs === 'function') {
-        filterJobs(currentJobDays);
+      // Re-apply job filter when switching to Operations tab (preserves state)
+      if(target === 'tab-operations' && typeof applyCurrentFilter === 'function') {
+        applyCurrentFilter();
       }
     });
   });
 })();
 </script>
 <script>
-// ── Job time filter ───────────────────────────────────────────────────────────
-var currentJobDays = 7;
-var jobRangeFrom = null, jobRangeTo = null;
+// ── Job filter (unified state: time + status + policy are independent) ─────────
+// mode: 'preset' (uses days), 'today', or 'range' (uses from/to).
+// status and policy are read live from their selects on every apply, so
+// changing one filter never resets the others.
+var jobFilter = { mode: 'preset', days: 7, from: null, to: null };
 
-function applyJobFilter(cutoffMs, todayOnly, rangeFrom, rangeTo) {
+function fmtDay(ms){
+  var d = new Date(ms);
+  return d.toISOString().slice(0,10);
+}
+
+function applyCurrentFilter() {
   var statusFilter = (document.getElementById('job-status-filter')||{}).value || '';
+  var policyFilter = (document.getElementById('job-policy-filter')||{}).value || '';
   var now = Date.now();
-  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
   var shown = 0, total = 0;
+  // Precompute the active time window [lo, hi].
+  var lo = 0, hi = now;
+  if(jobFilter.mode === 'range') {
+    lo = jobFilter.from ? new Date(jobFilter.from).getTime() : 0;
+    hi = jobFilter.to   ? new Date(jobFilter.to).getTime() + 86399999 : now;
+  } else if(jobFilter.mode === 'today') {
+    var ts = new Date(); ts.setHours(0,0,0,0); lo = ts.getTime();
+  } else { // preset
+    lo = jobFilter.days > 0 ? now - jobFilter.days * 86400000 : 0;
+  }
   document.querySelectorAll('tr.job-row').forEach(function(row){
     total++;
-    var start = row.getAttribute('data-start') || '';
+    var start  = row.getAttribute('data-start')  || '';
     var status = row.getAttribute('data-status') || '';
+    var policy = row.getAttribute('data-policy') || '';
     var t = 0;
     if(start) { try { t = new Date(start.replace(' ', 'T')).getTime(); } catch(e) { t = 0; } }
-    var inTime = true;
-    if(rangeFrom || rangeTo) {
-      var from = rangeFrom ? new Date(rangeFrom).getTime() : 0;
-      var to   = rangeTo  ? new Date(rangeTo).getTime() + 86399999 : now;
-      inTime = t >= from && t <= to;
-    } else if(todayOnly) {
-      inTime = t >= todayStart.getTime();
-    } else {
-      inTime = cutoffMs === 0 || (t > 0 && t >= cutoffMs);
-    }
+    var inTime   = (lo === 0 && jobFilter.mode === 'preset') ? true : (t > 0 && t >= lo && t <= hi);
     var inStatus = statusFilter === '' || status === statusFilter;
-    var show = inTime && inStatus;
+    var inPolicy = policyFilter === '' || policy === policyFilter;
+    var show = inTime && inStatus && inPolicy;
     row.style.display = show ? '' : 'none';
     if(show) shown++;
   });
   var lbl = document.getElementById('job-count-label');
   if(lbl) lbl.textContent = shown + ' of ' + total + ' jobs';
+  updatePrintSummary(shown, total, statusFilter, policyFilter, lo, hi);
+}
+
+function updatePrintSummary(shown, total, status, policy, lo, hi) {
+  var el = document.getElementById('print-filter-summary');
+  if(!el) return;
+  var parts = [];
+  if(jobFilter.mode === 'range')      parts.push('Range: ' + (jobFilter.from||'…') + ' → ' + (jobFilter.to||'…'));
+  else if(jobFilter.mode === 'today') parts.push('Range: today');
+  else if(jobFilter.days > 0)         parts.push('Last ' + jobFilter.days + ' days');
+  else                                parts.push('All time');
+  parts.push('Status: ' + (status || 'all'));
+  parts.push('Policy: ' + (policy || 'all'));
+  el.textContent = 'Recent Jobs — ' + parts.join('  ·  ') + '  ·  ' + shown + ' of ' + total + ' jobs';
 }
 
 function filterJobs(days) {
-  currentJobDays = days;
-  jobRangeFrom = null; jobRangeTo = null;
+  jobFilter = { mode: 'preset', days: days, from: null, to: null };
   var df = document.getElementById('job-date-from'); if(df) df.value = '';
   var dt = document.getElementById('job-date-to');   if(dt) dt.value = '';
   document.querySelectorAll('.job-filter-btn[data-days]').forEach(function(b){
     b.classList.toggle('active', parseInt(b.getAttribute('data-days'))===days && days !== -1);
   });
-  var cutoff = days > 0 ? Date.now() - days * 86400000 : 0;
-  applyJobFilter(cutoff, false, null, null);
+  applyCurrentFilter();
 }
 
 function filterJobsToday() {
-  currentJobDays = -1;
-  jobRangeFrom = null; jobRangeTo = null;
+  jobFilter = { mode: 'today', days: 0, from: null, to: null };
   var df = document.getElementById('job-date-from'); if(df) df.value = '';
   var dt = document.getElementById('job-date-to');   if(dt) dt.value = '';
   document.querySelectorAll('.job-filter-btn[data-days]').forEach(function(b){
     b.classList.toggle('active', b.getAttribute('data-days') === '-1');
   });
-  applyJobFilter(0, true, null, null);
+  applyCurrentFilter();
 }
 
 function filterJobsRange() {
   var from = (document.getElementById('job-date-from')||{}).value || '';
   var to   = (document.getElementById('job-date-to')||{}).value   || '';
-  if(!from && !to) { filterJobs(currentJobDays >= 0 ? currentJobDays : 7); return; }
+  if(!from && !to) { filterJobs(jobFilter.days > 0 ? jobFilter.days : 7); return; }
+  jobFilter = { mode: 'range', days: 0, from: from || null, to: to || null };
   document.querySelectorAll('.job-filter-btn[data-days]').forEach(function(b){ b.classList.remove('active'); });
-  applyJobFilter(0, false, from || null, to || null);
+  applyCurrentFilter();
 }
 
 function clearJobRange() {
@@ -1596,10 +1662,32 @@ function clearJobRange() {
   filterJobs(7);
 }
 
+function exportJobsPDF() {
+  applyCurrentFilter();
+  window.print();
+}
+
+// Populate the policy dropdown from the distinct policy names present in the table.
+function populatePolicyFilter() {
+  var sel = document.getElementById('job-policy-filter');
+  if(!sel) return;
+  var seen = {};
+  document.querySelectorAll('tr.job-row').forEach(function(row){
+    var p = (row.getAttribute('data-policy') || '').trim();
+    if(p) seen[p] = true;
+  });
+  Object.keys(seen).sort().forEach(function(p){
+    var o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    sel.appendChild(o);
+  });
+}
+
 // Init count on load
 window.addEventListener('DOMContentLoaded', function(){
+  populatePolicyFilter();
   filterJobs(7);
-  filterReports(30);
+  filterReports(0);
 });
 
 // ── K10 Reports time filter ───────────────────────────────────────────────────
@@ -1608,19 +1696,124 @@ function filterReports(days) {
     b.classList.toggle('active', parseInt(b.getAttribute('data-rptdays'))===days);
   });
   var now = Date.now();
-  var cutoff = days > 0 ? now - days * 86400000 : 0;
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
   var shown = 0, total = 0;
   document.querySelectorAll('tr.rpt-row').forEach(function(row){
     total++;
     var d = row.getAttribute('data-rptdate') || '';
     var t = d ? new Date(d.replace(' ', 'T')).getTime() : 0;
-    var show = cutoff === 0 || (t > 0 && t >= cutoff);
+    var show;
+    if(days === -1) {
+      show = t >= todayStart.getTime();
+    } else {
+      var cutoff = days > 0 ? now - days * 86400000 : 0;
+      show = cutoff === 0 || (t > 0 && t >= cutoff);
+    }
     row.style.display = show ? '' : 'none';
     if(show) shown++;
   });
   var lbl = document.getElementById('rpt-count');
   if(lbl) lbl.textContent = shown + ' of ' + total + ' reports';
 }
+
+// ── Restore Point Detail time filter ───────────────────────────────────────────
+function filterRPDetail(days) {
+  document.querySelectorAll('[data-rpddays]').forEach(function(b){
+    b.classList.toggle('active', parseInt(b.getAttribute('data-rpddays'))===days);
+  });
+  var now = Date.now();
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  var shown = 0, total = 0;
+  document.querySelectorAll('tr.rpd-row').forEach(function(row){
+    total++;
+    var d = row.getAttribute('data-rpddate') || '';
+    var t = d ? new Date(d.replace(' ', 'T')).getTime() : 0;
+    var show;
+    if(days === -1) {
+      show = t >= todayStart.getTime();
+    } else {
+      var cutoff = days > 0 ? now - days * 86400000 : 0;
+      show = cutoff === 0 || (t > 0 && t >= cutoff);
+    }
+    row.style.display = show ? '' : 'none';
+    if(show) shown++;
+  });
+  var lbl = document.getElementById('rpd-count');
+  if(lbl) lbl.textContent = shown + ' of ' + total + ' points';
+}
+
+// ── Job Execution Trend (client-side bucketing: day / week / month) ─────────────
+var jobTrendChart = null;
+var jobTrendGran = 'day';
+
+function jtPad(n){ return (n<10?'0':'')+n; }
+function jtBucketStart(d, gran){
+  if(gran === 'day'){ var x=new Date(d); x.setHours(0,0,0,0); return x.getTime(); }
+  if(gran === 'week'){ var x=new Date(d); var dow=(x.getDay()+6)%7; x.setHours(0,0,0,0); x.setDate(x.getDate()-dow); return x.getTime(); }
+  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+}
+function jtLabel(ts, gran){
+  var d=new Date(ts);
+  var mon=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  if(gran === 'month') return mon[d.getMonth()]+" "+d.getFullYear();
+  return jtPad(d.getDate())+" "+mon[d.getMonth()];
+}
+function jobTrendBuckets(gran){
+  var map = {};
+  document.querySelectorAll('tr.job-row').forEach(function(row){
+    var start = row.getAttribute('data-start') || '';
+    var status = row.getAttribute('data-status') || '';
+    if(!start) return;
+    var d = new Date(start.replace(' ', 'T'));
+    if(isNaN(d.getTime())) return;
+    var key = String(jtBucketStart(d, gran));
+    var b = map[key] || (map[key] = {c:0, f:0, s:0});
+    if(status === 'Complete' || status === 'Success') b.c++;
+    else if(status === 'Failed' || status === 'Error') b.f++;
+    else if(status === 'Skipped') b.s++;
+  });
+  return map;
+}
+function renderJobTrend(){
+  var el = document.getElementById('jobTrendChart');
+  if(!el || typeof Chart === 'undefined') return;
+  var map = jobTrendBuckets(jobTrendGran);
+  var keys = Object.keys(map).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+  var labels = keys.map(function(k){ return jtLabel(parseInt(k), jobTrendGran); });
+  var c=[], f=[], s=[];
+  keys.forEach(function(k){ c.push(map[k].c); f.push(map[k].f); s.push(map[k].s); });
+  var data = { labels: labels.length ? labels : ["No data"], datasets:[
+    {label:"Complete", data:c, backgroundColor:"#3fb950", stack:"s"},
+    {label:"Failed",   data:f, backgroundColor:"#f85149", stack:"s"},
+    {label:"Skipped",  data:s, backgroundColor:"#888780", stack:"s"}
+  ]};
+  if(jobTrendChart){ jobTrendChart.data = data; jobTrendChart.update(); }
+  else {
+    jobTrendChart = new Chart(el, {type:"bar", data:data, options:{responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{stacked:true, grid:{display:false}, ticks:{autoSkip:true, maxRotation:45, font:{size:10}}},
+        y:{stacked:true, grid:{color:"rgba(255,255,255,.06)"}, border:{display:false}, ticks:{precision:0}}
+      },
+      plugins:{
+        legend:{display:true, position:"bottom", labels:{font:{size:10}, boxWidth:10, color:"#8b949e", padding:8}},
+        tooltip:{callbacks:{ label:function(ctx){ return " "+ctx.dataset.label+": "+ctx.raw+" job(s)"; } }}
+      }
+    }});
+  }
+  var lbl = document.getElementById('jobtrend-count');
+  if(lbl) lbl.textContent = keys.length + ' ' + jobTrendGran + (keys.length===1?'':'s');
+}
+function setJobTrendGran(g){
+  jobTrendGran = g;
+  document.querySelectorAll('.job-filter-btn[data-gran]').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-gran') === g);
+  });
+  renderJobTrend();
+}
+window.addEventListener('DOMContentLoaded', function(){
+  filterRPDetail(0);
+  renderJobTrend();
+});
 </script>
 </body>
 </html>`

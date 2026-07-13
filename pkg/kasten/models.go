@@ -46,6 +46,29 @@ type Data struct {
 	RecoveryReadiness  RecoveryReadinessScore `json:"recoveryReadiness"`
 	AppRiskMatrix      []AppRisk              `json:"appRiskMatrix,omitempty"`
 	WeeklySLATrend     []WeeklySLA            `json:"weeklySLATrend,omitempty"`
+	// Job analytics (derived from Jobs; power the UI filters and external tooling)
+	FilterFacets     FilterFacets           `json:"filterFacets"`
+	FailuresByPolicy []PolicyFailureSummary `json:"failuresByPolicy,omitempty"`
+}
+
+// FilterFacets exposes the distinct filter values and date span of the collected
+// jobs, so the HTML report and any downstream consumer share the same options.
+type FilterFacets struct {
+	Policies []string `json:"policies"`
+	Statuses []string `json:"statuses"`
+	Actions  []string `json:"actions"`
+	DateMin  string   `json:"dateMin,omitempty"`
+	DateMax  string   `json:"dateMax,omitempty"`
+}
+
+// PolicyFailureSummary aggregates failed job runs per policy — the raw material
+// for a "which policies failed" report.
+type PolicyFailureSummary struct {
+	PolicyName  string   `json:"policyName"`
+	FailedCount int      `json:"failedCount"`
+	LastFailure string   `json:"lastFailure,omitempty"`
+	LastError   string   `json:"lastError,omitempty"`
+	Errors      []string `json:"errors,omitempty"`
 }
 
 // ── Recovery Readiness Score ──────────────────────────────────────────────────

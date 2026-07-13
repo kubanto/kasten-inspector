@@ -340,6 +340,7 @@ func (b *pptxBuilder) buildSlides() ([]string, []bool) {
 		b.slide3Coverage(apps.Total, apps.Protected, apps.Unprotected, ns.Unprotected),
 		b.slide4Policies(k.Policies),
 		b.slide5Jobs(js, k.Jobs, sucRate, k.WeeklySLATrend),
+		b.slide5bDaily(k.Jobs),
 		b.slide6BP(bp),
 		b.slide7Storage(stor, k.Profiles),
 		b.slideRRS(rrs),
@@ -349,7 +350,7 @@ func (b *pptxBuilder) buildSlides() ([]string, []bool) {
 	}
 
 	// Which slides use the content background image (rId2)
-	hasBg := []bool{false, true, true, true, true, true, true, true, true, true, false}
+	hasBg := []bool{false, true, true, true, true, true, true, true, true, true, true, false}
 
 	return slides, hasBg
 }
@@ -568,68 +569,37 @@ func (b *pptxBuilder) slide5Jobs(js interface{}, jobs interface{}, sucRate int, 
 	failed := intVal(jsum, "failed")
 	skipped := intVal(jsum, "skipped")
 
-	rawJobs, _ := json.Marshal(jobs)
-	var jobList []map[string]interface{}
-	json.Unmarshal(rawJobs, &jobList)
-
-	byMonth := map[string][3]int{}
-	for _, j := range jobList {
-		st := strVal(j, "startTime")
-		if len(st) < 7 {
-			continue
+	// Adaptive granularity: daily when the collected span is short enough to be
+	// readable (≤16 days), otherwise monthly. Fixes the "single column" case where
+	// all jobs fell in one calendar month. (Weekly is available in the HTML report.)
+	dayB := jobBucketsBy(jobs, 10)
+	gran := "Monthly"
+	var labels []string
+	var vals [][3]int
+	if len(dayB) > 0 && len(dayB) <= 16 {
+		gran = "Daily"
+		for _, k := range sortedKeys(dayB) {
+			labels = append(labels, dayLabel(k))
+			vals = append(vals, dayB[k])
 		}
-		m := st[:7]
-		cur := byMonth[m]
-		switch strVal(j, "status") {
-		case "Complete":
-			cur[0]++
-		case "Failed":
-			cur[1]++
-		case "Skipped":
-			cur[2]++
+	} else {
+		monthB := jobBucketsBy(jobs, 7)
+		keys := sortedKeys(monthB)
+		if len(keys) > 6 {
+			keys = keys[len(keys)-6:]
 		}
-		byMonth[m] = cur
-	}
-	months := sortedKeys(byMonth)
-	if len(months) > 5 {
-		months = months[len(months)-5:]
+		for _, k := range keys {
+			labels = append(labels, monthLabel(k))
+			vals = append(vals, monthB[k])
+		}
 	}
 
 	out := rect(0, 0, 10, 5.625, cLight) +
-		contentHeader("Job History & Success Rate")
+		contentHeaderSub("Job History & Success Rate", gran+" trend")
 
-	maxVal := 1
-	for _, m := range months {
-		v := byMonth[m]
-		if t := v[0] + v[1] + v[2]; t > maxVal {
-			maxVal = t
-		}
-	}
-	chartX, chartY, chartH := 0.35, 0.85, 3.5
-	barW := 0.7
-	gap := 1.1
-
-	for i, m := range months {
-		v := byMonth[m]
-		barX := chartX + float64(i)*gap
-		totalH := float64(v[0]+v[1]+v[2]) / float64(maxVal) * chartH
-		base := chartY + chartH - totalH
-		if v[2] > 0 {
-			h := float64(v[2]) / float64(maxVal) * chartH
-			out += rect(barX, base, barW, h, "ADACAF")
-			base += h
-		}
-		if v[1] > 0 {
-			h := float64(v[1]) / float64(maxVal) * chartH
-			out += rect(barX, base, barW, h, cVRed)
-			base += h
-		}
-		if v[0] > 0 {
-			h := float64(v[0]) / float64(maxVal) * chartH
-			out += rect(barX, base, barW, h, cVGreen)
-		}
-		out += txb(barX-0.1, chartY+chartH+0.08, barW+0.2, 0.25, monthLabel(m), cVGray, 9, false, "ctr")
-	}
+	chartX, chartY, chartH := 0.35, 0.95, 3.3
+	chartW := 6.1
+	out += trendBars(labels, vals, chartX, chartY, chartW, chartH)
 
 	// Legend
 	out += rect(0.4, chartY+chartH+0.42, 0.18, 0.14, cVGreen) + txb(0.63, chartY+chartH+0.4, 1.0, 0.2, "Complete", cVText, 9, false, "l")
@@ -1311,4 +1281,120 @@ func monthLabel(m string) string {
 		return label + " " + m[2:4]
 	}
 	return m
+}
+
+// ── Job trend helpers (string-key bucketing; no time/sort imports) ─────────────
+
+// jobBucketsBy groups jobs by a prefix of their startTime: keyLen=10 → daily
+// ("2026-07-07"), keyLen=7 → monthly ("2026-07"). Returns {complete,failed,skipped}.
+func jobBucketsBy(jobs interface{}, keyLen int) map[string][3]int {
+	rawJobs, _ := json.Marshal(jobs)
+	var jobList []map[string]interface{}
+	json.Unmarshal(rawJobs, &jobList)
+	m := map[string][3]int{}
+	for _, j := range jobList {
+		st := strVal(j, "startTime")
+		if len(st) < keyLen {
+			continue
+		}
+		k := st[:keyLen]
+		cur := m[k]
+		switch strVal(j, "status") {
+		case "Complete", "Success":
+			cur[0]++
+		case "Failed", "Error":
+			cur[1]++
+		case "Skipped":
+			cur[2]++
+		}
+		m[k] = cur
+	}
+	return m
+}
+
+// dayLabel turns "2026-07-07" into "07 Jul".
+func dayLabel(k string) string {
+	if len(k) < 10 {
+		return k
+	}
+	mon := map[string]string{
+		"01": "Jan", "02": "Feb", "03": "Mar", "04": "Apr",
+		"05": "May", "06": "Jun", "07": "Jul", "08": "Aug",
+		"09": "Sep", "10": "Oct", "11": "Nov", "12": "Dec",
+	}
+	if label, ok := mon[k[5:7]]; ok {
+		return k[8:10] + " " + label
+	}
+	return k
+}
+
+// trendBars renders a stacked (skipped/failed/complete) bar chart into the given
+// rectangle, auto-sizing bar width to the number of buckets.
+func trendBars(labels []string, vals [][3]int, x, y, w, h float64) string {
+	n := len(labels)
+	if n == 0 {
+		return txb(x, y+h/2-0.15, w, 0.3, "No job history in range", cVGray, 11, false, "ctr")
+	}
+	maxVal := 1
+	for _, v := range vals {
+		if t := v[0] + v[1] + v[2]; t > maxVal {
+			maxVal = t
+		}
+	}
+	slot := w / float64(n)
+	barW := slot * 0.6
+	if barW > 0.7 {
+		barW = 0.7
+	}
+	out := ""
+	for i, v := range vals {
+		cx := x + float64(i)*slot + (slot-barW)/2
+		totalH := float64(v[0]+v[1]+v[2]) / float64(maxVal) * h
+		base := y + h - totalH
+		if v[2] > 0 {
+			hh := float64(v[2]) / float64(maxVal) * h
+			out += rect(cx, base, barW, hh, "ADACAF")
+			base += hh
+		}
+		if v[1] > 0 {
+			hh := float64(v[1]) / float64(maxVal) * h
+			out += rect(cx, base, barW, hh, cVRed)
+			base += hh
+		}
+		if v[0] > 0 {
+			hh := float64(v[0]) / float64(maxVal) * h
+			out += rect(cx, base, barW, hh, cVGreen)
+		}
+		// Label every bar when few, every other when crowded, to avoid overlap.
+		if n <= 16 || i%2 == 0 {
+			out += txb(x+float64(i)*slot-0.05, y+h+0.06, slot+0.1, 0.22, labels[i], cVGray, 7, false, "ctr")
+		}
+	}
+	return out
+}
+
+// ── SLIDE 5b: Daily job history (recent detail) ────────────────────────────────
+
+func (b *pptxBuilder) slide5bDaily(jobs interface{}) string {
+	spID = 0
+	dayB := jobBucketsBy(jobs, 10)
+	keys := sortedKeys(dayB)
+	if len(keys) > 14 {
+		keys = keys[len(keys)-14:]
+	}
+	var labels []string
+	var vals [][3]int
+	for _, k := range keys {
+		labels = append(labels, dayLabel(k))
+		vals = append(vals, dayB[k])
+	}
+	out := rect(0, 0, 10, 5.625, cLight) +
+		contentHeaderSub("Job History — Daily Detail", "last 14 days with activity")
+	out += trendBars(labels, vals, 0.35, 0.95, 9.3, 3.5)
+	// Legend
+	out += rect(0.4, 4.75, 0.18, 0.14, cVGreen) + txb(0.63, 4.73, 1.0, 0.2, "Complete", cVText, 9, false, "l")
+	out += rect(1.7, 4.75, 0.18, 0.14, cVRed) + txb(1.93, 4.73, 0.8, 0.2, "Failed", cVText, 9, false, "l")
+	out += rect(2.75, 4.75, 0.18, 0.14, "ADACAF") + txb(2.98, 4.73, 0.8, 0.2, "Skipped", cVText, 9, false, "l")
+	out += b.veeamFooter()
+	return out
 }

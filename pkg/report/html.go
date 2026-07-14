@@ -529,7 +529,7 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
 
 <!-- ══ CLUSTER ══ -->
 <div class="sec" id="cluster">
-  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(88,166,255,.1)">🖥️</div><h2>Cluster</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Kubernetes infrastructure details. <strong>Platform</strong>: detected distribution (GKE, EKS, AKS, OpenShift, k3s). <strong>FIPS</strong>: Federal encryption compliance mode. <strong>Dashboard Access</strong>: how the K10 UI is exposed (NodePort, LoadBalancer, Ingress).</span></span><span class="sec-count">{{.Cluster.Platform}} {{.Cluster.PlatformVersion}}</span></div>
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(88,166,255,.1)">🖥️</div><h2>Cluster</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Kubernetes infrastructure details. <strong>Platform</strong>: detected distribution (GKE, EKS, AKS, OpenShift, k3s). <strong>Dashboard Access</strong>: how the K10 UI is exposed (NodePort, LoadBalancer, Ingress).</span></span><span class="sec-count">{{.Cluster.Platform}} {{.Cluster.PlatformVersion}}</span></div>
   <div class="igrid">
     <div class="icard"><div class="icard-label">Kubernetes Version</div><div class="icard-val">{{.Cluster.KubernetesVersion}}</div></div>
     <div class="icard"><div class="icard-label">Platform</div><div class="icard-val">{{.Cluster.Platform}} {{.Cluster.PlatformVersion}}</div></div>
@@ -537,9 +537,6 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
     <div class="icard"><div class="icard-label">Namespaces</div><div class="icard-val">{{.Cluster.NamespaceCount}}</div></div>
     <div class="icard"><div class="icard-label">Storage Classes</div><div class="icard-val">{{len .Cluster.StorageClasses}}</div></div>
     <div class="icard"><div class="icard-label">Dashboard Access</div><div class="icard-val">{{.Kasten.HelmConfig.DashboardAccess}}</div></div>
-    <div class="icard"><div class="icard-label">FIPS Mode</div><div class="icard-val">{{yesno .Kasten.HelmConfig.FIPSMode}}</div></div>
-    <div class="icard"><div class="icard-label">Audit Logging</div><div class="icard-val">{{yesno .Kasten.HelmConfig.AuditLogging}}</div></div>
-    <div class="icard"><div class="icard-label">Network Policies</div><div class="icard-val">{{yesno .Kasten.HelmConfig.NetworkPolicies}}</div></div>
     <div class="icard"><div class="icard-label">Concurrency Limit</div><div class="icard-val">{{if .Kasten.HelmConfig.ConcurrencyLimit}}{{.Kasten.HelmConfig.ConcurrencyLimit}}{{else}}—{{end}}</div></div>
     <div class="icard"><div class="icard-label">Backup Timeout</div><div class="icard-val">{{orDash .Kasten.HelmConfig.BackupTimeout}}</div></div>
     <div class="icard"><div class="icard-label">Datastore Parallelism</div><div class="icard-val">{{if .Kasten.HelmConfig.DatastoreParallelism}}{{.Kasten.HelmConfig.DatastoreParallelism}}{{else}}—{{end}}</div></div>
@@ -633,13 +630,6 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
       <td class="mono muted">{{if $cont.MemLimit}}{{$cont.MemLimit}}{{else}}<span style="color:var(--yellow)">—</span>{{end}}</td>
     </tr>{{end}}{{end}}</tbody></table>
   </div>
-  {{if .Kasten.Catalog.SizeHuman}}
-  <div class="igrid" style="margin-top:12px">
-    <div class="icard"><div class="icard-label">Catalog Size</div><div class="icard-val">{{.Kasten.Catalog.SizeHuman}}</div></div>
-    {{if .Kasten.Catalog.FreeHuman}}<div class="icard"><div class="icard-label">Free Space</div><div class="icard-val" style="color:{{if .Kasten.Catalog.LowSpaceAlert}}var(--red){{else}}var(--green){{end}}">{{.Kasten.Catalog.FreeHuman}} ({{pct .Kasten.Catalog.FreePercent}})</div></div>{{end}}
-    <div class="icard"><div class="icard-label">Storage Class</div><div class="icard-val">{{orDash .Kasten.Catalog.StorageClass}}</div></div>
-    <div class="icard"><div class="icard-label">Low Space Alert</div><div class="icard-val">{{if .Kasten.Catalog.LowSpaceAlert}}<span style="color:var(--red)">YES</span>{{else}}<span style="color:var(--green)">No</span>{{end}}</div></div>
-  </div>{{end}}
   <div class="igrid" style="margin-top:12px">
     <div class="icard"><div class="icard-label">Prometheus</div><div class="icard-val">{{if .Kasten.Prometheus.Enabled}}<span style="color:var(--green)">Enabled</span>{{else}}<span style="color:var(--tm)">Not detected</span>{{end}}</div></div>
     <div class="icard"><div class="icard-label">ServiceMonitor</div><div class="icard-val">{{yesno .Kasten.Prometheus.ServiceMonitor}}</div></div>
@@ -678,42 +668,6 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   <div class="alert warn">⚠️ No Kasten DR policy configured — the K10 catalog is not being backed up externally</div>
   {{end}}
 </div>
-
-<!-- ══ STORAGECLASS / VSC INVENTORY ══ -->
-{{if or .Kasten.StorageClasses .Kasten.VolumeSnapshotClasses}}
-<div class="sec" id="sc-vsc-inventory">
-  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(63,185,80,.1)">💿</div><h2>StorageClass &amp; VolumeSnapshotClass Inventory</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">CSI cross-check: each StorageClass using a CSI provisioner must have a matching VolumeSnapshotClass for Kasten to use CSI snapshots. Missing VSC means PVCs on that class need a Kanister Blueprint or Generic Volume Backup.</span></span></div>
-  {{if .Kasten.CSIWarnings}}
-  <div style="margin-bottom:12px">{{range .Kasten.CSIWarnings}}<div class="pill warn" style="margin-bottom:4px;display:block;font-size:11px;border-radius:4px;padding:4px 8px">⚠️ {{.}}</div>{{end}}</div>
-  {{end}}
-  {{if .Kasten.StorageClasses}}
-  <p style="font-size:12px;font-weight:600;margin:8px 0 4px;color:var(--t2)">STORAGECLASSES</p>
-  <div class="twrap">
-    <table><thead><tr><th>Name</th><th>Provisioner</th><th>Default</th><th>Expandable</th><th>Reclaim</th><th>VSC</th></tr></thead>
-    <tbody>{{range .Kasten.StorageClasses}}<tr>
-      <td class="mono">{{.Name}}</td>
-      <td class="mono muted" style="font-size:11px">{{.Provisioner}}</td>
-      <td style="text-align:center">{{if .IsDefault}}<span class="pill ok">yes</span>{{end}}</td>
-      <td style="text-align:center">{{if .Expandable}}<span class="pill ok">yes</span>{{else}}<span class="pill muted">no</span>{{end}}</td>
-      <td class="mono muted" style="font-size:11px">{{orDash .ReclaimPolicy}}</td>
-      <td style="text-align:center">{{if .HasVSC}}<span class="pill ok">✅</span>{{else if .Provisioner}}<span class="pill warn">⚠️</span>{{else}}<span class="muted">—</span>{{end}}</td>
-    </tr>{{end}}</tbody></table>
-  </div>
-  {{end}}
-  {{if .Kasten.VolumeSnapshotClasses}}
-  <p style="font-size:12px;font-weight:600;margin:16px 0 4px;color:var(--t2)">VOLUMESNAPSHOTCLASSES</p>
-  <div class="twrap">
-    <table><thead><tr><th>Name</th><th>Driver</th><th>Default</th><th>Deletion Policy</th></tr></thead>
-    <tbody>{{range .Kasten.VolumeSnapshotClasses}}<tr>
-      <td class="mono">{{.Name}}</td>
-      <td class="mono muted" style="font-size:11px">{{.Driver}}</td>
-      <td style="text-align:center">{{if .IsDefault}}<span class="pill ok">yes</span>{{end}}</td>
-      <td class="mono muted" style="font-size:11px">{{orDash .DeletionPolicy}}</td>
-    </tr>{{end}}</tbody></table>
-  </div>
-  {{end}}
-</div>
-{{end}}
 
 </div><!-- /tab-health -->
 
@@ -894,34 +848,6 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   {{else}}<div class="twrap"><div class="empty">No namespace data available</div></div>{{end}}
 </div>
 
-<!-- ══ RESTORE POINTS BY NAMESPACE ══ -->
-<div class="sec" id="rp-by-ns">
-  <div class="sec-hdr">
-    <div class="sec-icon" style="background:rgba(63,185,80,.1)">💾</div>
-    <h2>Restore points by namespace</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">How many backup copies exist per application. Zero restore points means the app has never been backed up successfully and cannot be recovered from K10.</span></span>
-    <span class="sec-count">{{.Kasten.RestorePoints.Total}} total · {{.Kasten.RestorePoints.Orphaned}} orphaned</span>
-  </div>
-  {{if .Kasten.RestorePoints.ByApp}}
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-    <div style="background:var(--s1);border:1px solid var(--b);border-radius:10px;padding:16px">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin-bottom:10px">Restore points per application</div>
-      <div id="rpChartWrap" style="position:relative;height:180px"><canvas id="rpChart" role="img" aria-label="Restore points by application"></canvas></div>
-    </div>
-    <div class="twrap tscroll">
-      <table><thead><tr><th>Application</th><th>Restore points</th></tr></thead>
-      <tbody>{{range $app,$count := .Kasten.RestorePoints.ByApp}}<tr>
-        <td class="mono">{{$app}}</td>
-        <td style="color:var(--green);font-family:'IBM Plex Mono',monospace;font-weight:700">{{$count}}</td>
-      </tr>{{end}}</tbody></table>
-    </div>
-  </div>
-  {{else}}
-  <div class="twrap">
-    <div class="empty">No restore points yet — policies have not run. Once a backup completes, restore points will appear here grouped by namespace and application.</div>
-  </div>
-  {{end}}
-</div>
-
 <script>
 (function(){
   // Policy frequency chart
@@ -944,31 +870,6 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
         responsive:true, maintainAspectRatio:false, cutout:"55%",
         plugins:{legend:{position:"right",labels:{font:{size:11},color:"#8b949e",boxWidth:10}},
                  tooltip:{callbacks:{label:function(c){return " "+c.label+": "+c.raw+" polic"+(c.raw===1?"y":"ies");}}}}
-      }
-    });
-  }
-
-  // Restore points chart
-  var rpData = JSON.parse('{{rpByAppJSON .Kasten.RestorePoints.ByApp}}');
-  var rpLabels = Object.keys(rpData);
-  var rpVals = rpLabels.map(function(k){return rpData[k];});
-  if(rpLabels.length === 0 && document.getElementById("rpChartWrap")) {
-    document.getElementById("rpChartWrap").innerHTML =
-      '<div style="height:160px;display:flex;align-items:center;justify-content:center;color:#8b949e;font-size:12px;text-align:center;padding:0 20px">No restore points yet &mdash; run a policy manually to create the first backup</div>';
-  } else if(rpLabels.length > 0 && document.getElementById("rpChart")) {
-    var rpH = Math.max(rpLabels.length * 36 + 60, 160);
-    document.getElementById("rpChartWrap").style.height = rpH + "px";
-    new Chart(document.getElementById("rpChart"), {
-      type: "bar",
-      data: {
-        labels: rpLabels,
-        datasets: [{label:"Restore points", data:rpVals, backgroundColor:"#3fb950", borderRadius:4, barThickness:18}]
-      },
-      options: {
-        indexAxis:"y", responsive:true, maintainAspectRatio:false,
-        scales:{x:{grid:{color:"rgba(139,148,158,0.12)"},border:{display:false}},
-                y:{grid:{display:false},ticks:{font:{size:10},color:"#8b949e"}}},
-        plugins:{legend:{display:false}}
       }
     });
   }
@@ -1042,7 +943,13 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
 
 <!-- ══ RESTORE POINTS ══ -->
 <div class="sec" id="restorepoints">
-  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(63,185,80,.1)">💾</div><h2>Restore Points</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Saved backup copies for application recovery. Each point has a <strong>snapshot</strong> (local) and optionally an <strong>exported</strong> copy in object storage. <strong>Orphaned</strong>: no matching namespace &mdash; safe to delete to reclaim storage.</span></span><span class="sec-count">{{.Kasten.RestorePoints.Total}} total</span></div>
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(63,185,80,.1)">💾</div><h2>Restore Points</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Saved backup copies for application recovery. Each point has a <strong>snapshot</strong> (local) and optionally an <strong>exported</strong> copy in object storage. <strong>Orphaned</strong>: no matching namespace &mdash; safe to delete to reclaim storage.</span></span><span class="sec-count">{{.Kasten.RestorePoints.Total}} total · {{.Kasten.RestorePoints.Orphaned}} orphaned</span></div>
+  {{if .Kasten.RestorePoints.ByApp}}
+  <div style="background:var(--s1);border:1px solid var(--b);border-radius:10px;padding:16px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin-bottom:10px">Restore points per application</div>
+    <div id="rpChartWrap" style="position:relative;height:180px"><canvas id="rpChart" role="img" aria-label="Restore points by application"></canvas></div>
+  </div>
+  {{end}}
   <div class="two">
     {{if .Kasten.RestorePoints.ByApp}}
     <div class="twrap tscroll">
@@ -1086,6 +993,35 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   <div class="alert warn" style="margin-top:12px">⚠️ {{.Kasten.RestorePoints.Orphaned}} orphaned restore point(s) — consuming storage without a matching application</div>
   {{end}}
 </div>
+
+<script>
+(function(){
+  // Restore points chart (moved from Protection tab)
+  var rpData = JSON.parse('{{rpByAppJSON .Kasten.RestorePoints.ByApp}}');
+  var rpLabels = Object.keys(rpData);
+  var rpVals = rpLabels.map(function(k){return rpData[k];});
+  if(rpLabels.length === 0 && document.getElementById("rpChartWrap")) {
+    document.getElementById("rpChartWrap").innerHTML =
+      '<div style="height:160px;display:flex;align-items:center;justify-content:center;color:#8b949e;font-size:12px;text-align:center;padding:0 20px">No restore points yet &mdash; run a policy manually to create the first backup</div>';
+  } else if(rpLabels.length > 0 && document.getElementById("rpChart")) {
+    var rpH = Math.max(rpLabels.length * 36 + 60, 160);
+    document.getElementById("rpChartWrap").style.height = rpH + "px";
+    new Chart(document.getElementById("rpChart"), {
+      type: "bar",
+      data: {
+        labels: rpLabels,
+        datasets: [{label:"Restore points", data:rpVals, backgroundColor:"#3fb950", borderRadius:4, barThickness:18}]
+      },
+      options: {
+        indexAxis:"y", responsive:true, maintainAspectRatio:false,
+        scales:{x:{grid:{color:"rgba(139,148,158,0.12)"},border:{display:false}},
+                y:{grid:{display:false},ticks:{font:{size:10},color:"#8b949e"}}},
+        plugins:{legend:{display:false}}
+      }
+    });
+  }
+})();
+</script>
 <!-- ══ K10 REPORTS ══ -->
 {{if .Kasten.K10Reports}}
 <div class="sec" id="k10-reports">
@@ -1212,6 +1148,19 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   </div>
   {{end}}
 </div>
+
+<!-- ══ CATALOG ══ -->
+{{if .Kasten.Catalog.SizeHuman}}
+<div class="sec" id="catalog">
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(255,184,0,.1)">📚</div><h2>Catalog</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">The K10 catalog is the internal database of all backup metadata (restore points, actions, policies). If it runs low on space, K10 upgrades and new backups can fail &mdash; keep &ge;50% free (BP-24).</span></span></div>
+  <div class="igrid">
+    <div class="icard"><div class="icard-label">Catalog Size</div><div class="icard-val">{{.Kasten.Catalog.SizeHuman}}</div></div>
+    {{if .Kasten.Catalog.FreeHuman}}<div class="icard"><div class="icard-label">Free Space</div><div class="icard-val" style="color:{{if .Kasten.Catalog.LowSpaceAlert}}var(--red){{else}}var(--green){{end}}">{{.Kasten.Catalog.FreeHuman}} ({{pct .Kasten.Catalog.FreePercent}})</div></div>{{end}}
+    <div class="icard"><div class="icard-label">Storage Class</div><div class="icard-val">{{orDash .Kasten.Catalog.StorageClass}}</div></div>
+    <div class="icard"><div class="icard-label">Low Space Alert</div><div class="icard-val">{{if .Kasten.Catalog.LowSpaceAlert}}<span style="color:var(--red)">YES</span>{{else}}<span style="color:var(--green)">No</span>{{end}}</div></div>
+  </div>
+</div>
+{{end}}
 
 <!-- ══ STORAGE CHARTS ══ -->
 <div class="sec" id="storage-charts">
@@ -1432,6 +1381,42 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   }
 })();
 </script>
+
+<!-- ══ STORAGECLASS / VSC INVENTORY ══ -->
+{{if or .Kasten.StorageClasses .Kasten.VolumeSnapshotClasses}}
+<div class="sec" id="sc-vsc-inventory">
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(63,185,80,.1)">💿</div><h2>StorageClass &amp; VolumeSnapshotClass Inventory</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">CSI cross-check: each StorageClass using a CSI provisioner must have a matching VolumeSnapshotClass for Kasten to use CSI snapshots. Missing VSC means PVCs on that class need a Kanister Blueprint or Generic Volume Backup.</span></span></div>
+  {{if .Kasten.CSIWarnings}}
+  <div style="margin-bottom:12px">{{range .Kasten.CSIWarnings}}<div class="pill warn" style="margin-bottom:4px;display:block;font-size:11px;border-radius:4px;padding:4px 8px">⚠️ {{.}}</div>{{end}}</div>
+  {{end}}
+  {{if .Kasten.StorageClasses}}
+  <p style="font-size:12px;font-weight:600;margin:8px 0 4px;color:var(--t2)">STORAGECLASSES</p>
+  <div class="twrap">
+    <table><thead><tr><th>Name</th><th>Provisioner</th><th>Default</th><th>Expandable</th><th>Reclaim</th><th>VSC</th></tr></thead>
+    <tbody>{{range .Kasten.StorageClasses}}<tr>
+      <td class="mono">{{.Name}}</td>
+      <td class="mono muted" style="font-size:11px">{{.Provisioner}}</td>
+      <td style="text-align:center">{{if .IsDefault}}<span class="pill ok">yes</span>{{end}}</td>
+      <td style="text-align:center">{{if .Expandable}}<span class="pill ok">yes</span>{{else}}<span class="pill muted">no</span>{{end}}</td>
+      <td class="mono muted" style="font-size:11px">{{orDash .ReclaimPolicy}}</td>
+      <td style="text-align:center">{{if .HasVSC}}<span class="pill ok">✅</span>{{else if .Provisioner}}<span class="pill warn">⚠️</span>{{else}}<span class="muted">—</span>{{end}}</td>
+    </tr>{{end}}</tbody></table>
+  </div>
+  {{end}}
+  {{if .Kasten.VolumeSnapshotClasses}}
+  <p style="font-size:12px;font-weight:600;margin:16px 0 4px;color:var(--t2)">VOLUMESNAPSHOTCLASSES</p>
+  <div class="twrap">
+    <table><thead><tr><th>Name</th><th>Driver</th><th>Default</th><th>Deletion Policy</th></tr></thead>
+    <tbody>{{range .Kasten.VolumeSnapshotClasses}}<tr>
+      <td class="mono">{{.Name}}</td>
+      <td class="mono muted" style="font-size:11px">{{.Driver}}</td>
+      <td style="text-align:center">{{if .IsDefault}}<span class="pill ok">yes</span>{{end}}</td>
+      <td class="mono muted" style="font-size:11px">{{orDash .DeletionPolicy}}</td>
+    </tr>{{end}}</tbody></table>
+  </div>
+  {{end}}
+</div>
+{{end}}
 </div><!-- /tab-storage -->
 
 <div class="tabpanel" id="tab-config">
@@ -1499,6 +1484,22 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
       <td class="muted mono" style="font-size:11px">{{orDash .PolicyName}}</td>
       <td class="mono muted" style="font-size:11px;white-space:nowrap">{{formatTimeShort .StartTime}}</td>
       <td style="font-size:11px;color:var(--red);max-width:320px;word-break:break-word">{{orDash .Error}}</td>
+    </tr>{{end}}</tbody></table>
+  </div>
+</div>
+{{end}}
+
+<!-- ══ FAILURES BY POLICY ══ -->
+{{if .Kasten.FailuresByPolicy}}
+<div class="sec" id="failures-by-policy">
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(248,81,73,.1)">📉</div><h2>Failures by Policy</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Failed job runs aggregated per policy, ordered by failure count. Use it to spot which policy generates the most failures and its most recent error.</span></span><span class="sec-count">{{len .Kasten.FailuresByPolicy}} policies</span></div>
+  <div class="twrap">
+    <table><thead><tr><th>Policy</th><th>Failed</th><th>Last Failure</th><th>Last Error</th></tr></thead>
+    <tbody>{{range .Kasten.FailuresByPolicy}}<tr>
+      <td class="mono" style="font-size:11px">{{.PolicyName}}</td>
+      <td style="text-align:center"><span class="pill warn">{{.FailedCount}}</span></td>
+      <td class="mono muted" style="font-size:11px;white-space:nowrap">{{formatTimeShort .LastFailure}}</td>
+      <td style="font-size:11px;color:var(--red);max-width:320px;word-break:break-word">{{orDash .LastError}}</td>
     </tr>{{end}}</tbody></table>
   </div>
 </div>

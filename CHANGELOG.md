@@ -4,6 +4,18 @@ All notable changes to Kasten Inspector are documented here.
 
 ---
 
+## [1.3.1] — 2026-07-14
+
+### Added
+
+#### Per-action success rate (snapshot / export)
+- `JobSummary.SuccessByAction` — per-action success rate computed from collected jobs (e.g. %snapshot success, %export success). Complete/Success count as success, Failed/Error as failure; Skipped/Running/Cancelled are excluded from the denominator, matching `Compliance.SuccessRate7d` semantics. In K10, the `backup` action corresponds to snapshots.
+- `K10ReportActions` now retains per-action completed/failed counts (`snapshotCompleted/Failed`, `exportCompleted/Failed`, `restoreCompleted/Failed`) from the K10 report — an authoritative source not limited by the job-collection window, useful for multi-cluster aggregation.
+- HTML report: new **"Success Rate by Action"** rows in the Overview → Compliance & SLA card.
+- Both metrics are exposed in the JSON output (`kasten.jobSummary.successByAction` and `kasten.k10Reports[].stats.actions`).
+
+---
+
 ## [1.3.0] — 2026-06-24
 
 ### Added

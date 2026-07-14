@@ -1,3 +1,29 @@
+# Release Notes — Kasten Inspector v1.3.1
+
+**Released:** 2026-07-14  
+**Repository:** https://github.com/kubanto/kasten-inspector  
+**Previous version:** v1.3.0
+
+---
+
+## Highlights
+
+### Per-action success rate (snapshot / export)
+
+The report now surfaces the **success rate broken down by action** — the direct answer to KPIs like "%snapshot success rate" and "%export success rate":
+
+- **JSON** — `kasten.jobSummary.successByAction` gives, per action (`backup`/snapshot, `export`, `restore`), the completed/failed counts and the `successRate` (%). Skipped, Running and Cancelled are excluded from the denominator, matching the existing 7-day success-rate semantics.
+- **Authoritative source** — `kasten.k10Reports[].stats.actions` now retains per-action `snapshotCompleted/Failed`, `exportCompleted/Failed` and `restoreCompleted/Failed` straight from the K10 report, independent of the job-collection window (ideal for multi-cluster aggregation).
+- **HTML** — new **"Success Rate by Action"** rows in the Overview → Compliance & SLA card.
+
+> Note: in K10 the `backup` action corresponds to snapshots.
+
+### Breaking Changes
+
+None. All existing flags and JSON fields are unchanged; the new fields are additive.
+
+---
+
 # Release Notes — Kasten Inspector v1.3.0
 
 **Released:** 2026-06-24  

@@ -75,6 +75,7 @@ func collectK10Reports(c *cluster.Client, ns string) ([]K10Report, error) {
 		countStats := GetMap(res, "actions", "countStats")
 		var totalCompleted, totalFailed, totalSkipped, totalCancelled int
 		var snapshotC, restoreC, exportC, importC int
+		var snapComp, snapFail, expComp, expFail, resComp, resFail int
 		for actionType, v := range countStats {
 			am, ok := v.(map[string]interface{})
 			if !ok {
@@ -91,10 +92,16 @@ func collectK10Reports(c *cluster.Client, ns string) ([]K10Report, error) {
 			switch actionType {
 			case "backup", "backupCluster":
 				snapshotC += c2 + f + s + cc
+				snapComp += c2
+				snapFail += f
 			case "restore", "restoreCluster":
 				restoreC += c2 + f + s + cc
+				resComp += c2
+				resFail += f
 			case "export":
 				exportC += c2 + f + s + cc
+				expComp += c2
+				expFail += f
 			case "import":
 				importC += c2 + f + s + cc
 			}
@@ -110,6 +117,13 @@ func collectK10Reports(c *cluster.Client, ns string) ([]K10Report, error) {
 			Restore:   restoreC,
 			Export:    exportC,
 			Import:    importC,
+
+			SnapshotCompleted: snapComp,
+			SnapshotFailed:    snapFail,
+			ExportCompleted:   expComp,
+			ExportFailed:      expFail,
+			RestoreCompleted:  resComp,
+			RestoreFailed:     resFail,
 		}
 
 		// ── Storage ───────────────────────────────────────────────────────

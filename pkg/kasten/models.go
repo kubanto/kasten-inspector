@@ -313,6 +313,22 @@ type JobSummary struct {
 	Running   int            `json:"running"`
 	ByAction  map[string]int `json:"byAction"`
 	ByStatus  map[string]int `json:"byStatus"`
+	// SuccessByAction holds the per-action success rate (e.g. %snapshot success,
+	// %export success), computed from the collected jobs. Sorted by action name.
+	SuccessByAction []ActionSuccess `json:"successByAction,omitempty"`
+}
+
+// ActionSuccess holds the success rate of a single action type (backup/snapshot,
+// export, restore, import), derived from the collected jobs. Complete/Success
+// count as success and Failed/Error as failure; Skipped, Running and Cancelled
+// are excluded from the denominator, matching Compliance.SuccessRate7d semantics.
+type ActionSuccess struct {
+	Action      string  `json:"action"`
+	Completed   int     `json:"completed"`
+	Failed      int     `json:"failed"`
+	Skipped     int     `json:"skipped"`
+	Total       int     `json:"total"`       // Completed + Failed (the denominator)
+	SuccessRate float64 `json:"successRate"` // percent; -1 when no actionable outcomes
 }
 
 // ── Restore Points ────────────────────────────────────────────────────────────
@@ -484,6 +500,15 @@ type K10ReportActions struct {
 	Restore   int `json:"restore"`
 	Export    int `json:"export"`
 	Import    int `json:"import"`
+	// Per-action completed/failed counts, retained from the K10 report so the
+	// authoritative %snapshot success and %export success can be computed without
+	// the job-collection window limit. "snapshot" maps to the K10 backup action.
+	SnapshotCompleted int `json:"snapshotCompleted"`
+	SnapshotFailed    int `json:"snapshotFailed"`
+	ExportCompleted   int `json:"exportCompleted"`
+	ExportFailed      int `json:"exportFailed"`
+	RestoreCompleted  int `json:"restoreCompleted"`
+	RestoreFailed     int `json:"restoreFailed"`
 }
 
 type K10ReportStorage struct {

@@ -512,6 +512,12 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
       {{if .Kasten.DR.Enabled}}
       <div class="stat-row"><span class="stat-label">DR Last Run</span><span class="stat-val mono" style="font-size:11px">{{fmtDate .Kasten.DR.LastRunTime}} <span class="pill {{statusClass .Kasten.DR.LastRunStatus}}">{{.Kasten.DR.LastRunStatus}}</span></span></div>
       {{end}}
+      {{if .Kasten.JobSummary.SuccessByAction}}
+      <div class="stat-row" style="border-top:1px solid var(--b);margin-top:6px;padding-top:10px"><span class="stat-label" style="font-weight:600">Success Rate by Action</span><span class="stat-val muted" style="font-size:10px">completed / total</span></div>
+      {{range .Kasten.JobSummary.SuccessByAction}}
+      <div class="stat-row"><span class="stat-label" style="text-transform:capitalize">{{.Action}}</span><span class="stat-val">{{if ge .SuccessRate 0.0}}<span style="color:{{colorPct .SuccessRate}}">{{pct .SuccessRate}}</span> <span class="muted" style="font-size:11px">({{.Completed}} / {{.Total}})</span>{{else}}<span class="muted">n/a</span>{{end}}</span></div>
+      {{end}}
+      {{end}}
     </div>
   </div>
 </div>

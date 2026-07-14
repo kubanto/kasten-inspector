@@ -94,6 +94,53 @@ func computeFailuresByPolicy(jobs []Job) []PolicyFailureSummary {
 	return out
 }
 
+// computeSuccessByAction computes the per-action success rate from the collected
+// jobs — the direct source for KPIs such as "%snapshot success" and "%export
+// success". Complete/Success count as success, Failed/Error as failure; Skipped,
+// Running and Cancelled are excluded from the denominator, matching the semantics
+// of Compliance.SuccessRate7d. Results are sorted by action name. Actions with no
+// actionable outcome (only Skipped/Running) report SuccessRate == -1.
+func computeSuccessByAction(jobs []Job) []ActionSuccess {
+	type agg struct{ completed, failed, skipped int }
+	m := map[string]*agg{}
+	for _, j := range jobs {
+		if j.Action == "" {
+			continue
+		}
+		a := m[j.Action]
+		if a == nil {
+			a = &agg{}
+			m[j.Action] = a
+		}
+		switch j.Status {
+		case "Complete", "Success":
+			a.completed++
+		case "Failed", "Error":
+			a.failed++
+		case "Skipped":
+			a.skipped++
+		}
+	}
+	out := make([]ActionSuccess, 0, len(m))
+	for action, a := range m {
+		total := a.completed + a.failed
+		rate := -1.0
+		if total > 0 {
+			rate = float64(a.completed) / float64(total) * 100
+		}
+		out = append(out, ActionSuccess{
+			Action:      action,
+			Completed:   a.completed,
+			Failed:      a.failed,
+			Skipped:     a.skipped,
+			Total:       total,
+			SuccessRate: rate,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Action < out[j].Action })
+	return out
+}
+
 // sortedSetKeys returns the keys of a string set in ascending order.
 func sortedSetKeys(set map[string]bool) []string {
 	keys := make([]string, 0, len(set))

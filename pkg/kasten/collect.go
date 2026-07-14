@@ -172,5 +172,6 @@ func computeJobSummary(jobs []Job) JobSummary {
 			s.Running++
 		}
 	}
+	s.SuccessByAction = computeSuccessByAction(jobs)
 	return s
 }

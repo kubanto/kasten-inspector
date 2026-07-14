@@ -4,6 +4,23 @@ All notable changes to Kasten Inspector are documented here.
 
 ---
 
+## [1.4.0] — 2026-07-14
+
+### Added
+- Per-action success rate now surfaced in the **Markdown** report and the **PPTX QBR deck**. The "Job History & Success Rate" slide gains two KPI cards — **Snapshot success** and **Export success** (in K10 the `backup` action = snapshot).
+
+### Changed
+- **Report tab reorganization** for clearer separation of concerns:
+  - Catalog and StorageClass & VolumeSnapshotClass inventory moved from Health Check → **Storage**.
+  - Restore Points consolidated: the by-namespace chart now lives with the detail tables under **Operations** (Protection is now purely forward-looking).
+  - Security posture flags (FIPS, Audit Logging, Network Policies) shown once, in the **Security** section.
+- **Failures by Policy** table now rendered in the **Diagnostics** tab (previously JSON-only).
+
+### Fixed
+- QBR PowerPoint could open with a "repair" prompt (corrupt `docProps/core.xml`) when `--tam` was omitted or when the customer/TAM name contained `<`, `>` or `&`. The document-author field is now XML-escaped.
+
+---
+
 ## [1.3.1] — 2026-07-14
 
 ### Added

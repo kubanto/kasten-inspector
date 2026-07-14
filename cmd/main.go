@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var version = "1.3.1"
+var version = "1.4.0"
 
 const usage = `Kasten K10 Inspector v%s — cluster health & data protection reporter
 by kubanto — independent project, not an official Veeam product

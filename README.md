@@ -13,6 +13,14 @@ no runtime dependencies, no changes to the cluster, no `kubectl` required.
 
 ---
 
+## What's New in v1.4.0
+
+- **Per-action success rate in Markdown & PPTX** — the %snapshot / %export success KPI now also appears in the Markdown summary and in the QBR deck's "Job History & Success Rate" slide (Snapshot success + Export success cards).
+- **Report tab reorganization** — Catalog and StorageClass/VSC inventory moved to Storage; Restore Points consolidated under Operations; Failures by Policy rendered in Diagnostics; security flags shown once under Security.
+- **Fixed** — QBR PowerPoint no longer prompts to "repair" when `--tam` is omitted or when the customer/TAM name contains `<`, `>` or `&`.
+
+---
+
 ## What's New in v1.3.1
 
 ### Per-action success rate (snapshot / export)

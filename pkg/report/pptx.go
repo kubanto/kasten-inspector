@@ -177,7 +177,7 @@ func (b *pptxBuilder) coreXML() string {
 	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` + "\r\n" +
 		`<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">` +
 		`<dc:title>Kasten K10 QBR ` + xmlEsc(b.opts.Customer) + `</dc:title>` +
-		`<dc:creator>` + b.opts.TAM + `</dc:creator>` +
+		`<dc:creator>` + xmlEsc(b.opts.TAM) + `</dc:creator>` +
 		`<cp:revision>1</cp:revision></cp:coreProperties>`
 }
 

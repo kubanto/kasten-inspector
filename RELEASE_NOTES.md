@@ -1,3 +1,28 @@
+# Release Notes — Kasten Inspector v1.4.0
+
+**Released:** 2026-07-14  
+**Repository:** https://github.com/kubanto/kasten-inspector  
+**Previous version:** v1.3.1
+
+---
+
+## Highlights
+
+### Per-action success rate in Markdown & PPTX
+The "%snapshot success / %export success" KPI (added to HTML/JSON in v1.3.1) now also appears in the **Markdown** summary and, most importantly, in the **PPTX QBR deck**: the "Job History & Success Rate" slide gains **Snapshot success** and **Export success** KPI cards (in K10 the `backup` action = snapshot).
+
+### Report tab reorganization
+Clearer separation of concerns in the HTML report: Catalog and CSI/VSC inventory moved to **Storage**; Restore Points consolidated under **Operations**; **Failures by Policy** now rendered in **Diagnostics**; security flags (FIPS/Audit/Network Policies) shown once in **Security**.
+
+### Fixed
+- QBR PowerPoint no longer opens with a "repair" prompt when `--tam` is omitted or when the customer/TAM name contains `<`, `>` or `&` (the document-author field is now XML-escaped).
+
+### Breaking Changes
+
+None. All existing flags and JSON fields are unchanged; additions are additive.
+
+---
+
 # Release Notes — Kasten Inspector v1.3.1
 
 **Released:** 2026-07-14  

@@ -434,6 +434,7 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   <button class="tablink active" data-tab="tab-overview">Overview</button>
   <button class="tablink" data-tab="tab-health">Health Check</button>
   <button class="tablink" data-tab="tab-protection">Protection</button>
+  <button class="tablink" data-tab="tab-recovery">Recovery</button>
   <button class="tablink" data-tab="tab-operations">Operations</button>
   <button class="tablink" data-tab="tab-storage">Storage</button>
   <button class="tablink" data-tab="tab-config">Configuration</button>
@@ -636,37 +637,6 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
     <div class="icard"><div class="icard-label">Grafana Dashboard</div><div class="icard-val">{{yesno .Kasten.Prometheus.GrafanaDashboard}}</div></div>
     {{if .Kasten.Prometheus.Endpoint}}<div class="icard"><div class="icard-label">Endpoint</div><div class="icard-val mono" style="font-size:11px">{{.Kasten.Prometheus.Endpoint}}</div></div>{{end}}
   </div>
-</div>
-
-<!-- ══ DISASTER RECOVERY ══ -->
-<div class="sec" id="dr">
-  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(248,81,73,.1)">🔄</div><h2>Kasten Disaster Recovery</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Protects the K10 catalog itself &mdash; the database of all backup metadata. Without KDR, a cluster failure loses the ability to restore even if backup data exists in object storage.</span></span></div>
-  {{if .Kasten.DR.Enabled}}
-  <div class="twrap">
-    <table><tbody>
-      <tr><td>Status</td><td><span class="pill ok">Enabled</span></td></tr>
-      <tr><td>Mode</td><td>{{orDash .Kasten.DR.Mode}}</td></tr>
-      <tr><td>DR Policy</td><td class="mono">{{.Kasten.DR.BackupPolicy}}</td></tr>
-      <tr><td>Export Profile</td><td class="mono muted">{{orDash .Kasten.DR.ExportProfile}}</td></tr>
-      <tr><td>Last Run</td><td class="mono muted">{{fmtDate .Kasten.DR.LastRunTime}}</td></tr>
-      <tr><td>Last Status</td><td>{{if .Kasten.DR.LastRunStatus}}<span class="pill {{statusClass .Kasten.DR.LastRunStatus}}">{{.Kasten.DR.LastRunStatus}}</span>{{else}}—{{end}}</td></tr>
-    </tbody></table>
-  </div>
-  {{if .Kasten.MultiCluster.Clusters}}
-  <div style="margin-top:12px">
-    <div class="twrap tscroll">
-      <table><thead><tr><th>Remote Cluster</th><th>URL</th><th>Status</th><th>Version</th></tr></thead>
-      <tbody>{{range .Kasten.MultiCluster.Clusters}}<tr>
-        <td class="mono">{{.Name}}</td>
-        <td class="mono muted" style="font-size:11px">{{.URL}}</td>
-        <td><span class="pill {{statusClass .Status}}">{{.Status}}</span></td>
-        <td class="mono muted">{{orDash .Version}}</td>
-      </tr>{{end}}</tbody></table>
-    </div>
-  </div>{{end}}
-  {{else}}
-  <div class="alert warn">⚠️ No Kasten DR policy configured — the K10 catalog is not being backed up externally</div>
-  {{end}}
 </div>
 
 </div><!-- /tab-health -->
@@ -878,6 +848,233 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
 
 </div><!-- /tab-protection -->
 
+<div class="tabpanel" id="tab-recovery">
+
+<!-- ══ RECOVERY READINESS ══ -->
+<div class="sec" id="recovery-readiness">
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(63,185,80,.1)">🎯</div><h2>Recovery Readiness Score</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">A composite 0&ndash;100 score estimating how recoverable this cluster is &mdash; based on protection coverage, exported copies, immutability, Kasten DR, and recent success rates. Target &ge; 75 (grade B) for production.</span></span></div>
+  <div id="rrsLayoutRec" style="display:grid;grid-template-columns:200px 1fr;gap:28px;align-items:start">
+    <!-- Score card -->
+    <div style="background:var(--s2);border:1px solid var(--b);border-radius:12px;padding:20px 16px;text-align:center">
+      <div style="font-size:11px;color:var(--tm);margin-bottom:8px">How recoverable is this cluster?</div>
+      <div style="font-size:64px;font-weight:800;line-height:1;color:{{gradeColor .Kasten.RecoveryReadiness.Grade}}">{{.Kasten.RecoveryReadiness.Score}}</div>
+      <div style="font-size:11px;color:var(--tm);margin:2px 0 12px">out of 100</div>
+      <!-- Grade badge -->
+      <div style="display:inline-block;background:{{gradeColor .Kasten.RecoveryReadiness.Grade}};color:#fff;font-size:22px;font-weight:800;padding:4px 20px;border-radius:8px;letter-spacing:1px">{{.Kasten.RecoveryReadiness.Grade}}</div>
+      <!-- Grade scale -->
+      <div style="display:flex;justify-content:space-around;margin-top:14px;padding-top:12px;border-top:1px solid var(--b)">
+        {{$recGrade := .Kasten.RecoveryReadiness.Grade}}
+        <div style="text-align:center;opacity:{{if eq $recGrade "F"}}1{{else}}0.25{{end}}"><div style="font-size:14px;font-weight:700;color:#f85149">F</div></div>
+        <div style="text-align:center;opacity:{{if eq $recGrade "D"}}1{{else}}0.25{{end}}"><div style="font-size:14px;font-weight:700;color:#f85149">D</div></div>
+        <div style="text-align:center;opacity:{{if eq $recGrade "C"}}1{{else}}0.25{{end}}"><div style="font-size:14px;font-weight:700;color:#ffa657">C</div></div>
+        <div style="text-align:center;opacity:{{if eq $recGrade "B"}}1{{else}}0.25{{end}}"><div style="font-size:14px;font-weight:700;color:#58a6ff">B</div></div>
+        <div style="text-align:center;opacity:{{if eq $recGrade "A"}}1{{else}}0.25{{end}}"><div style="font-size:14px;font-weight:700;color:#3fb950">A</div></div>
+      </div>
+      <div style="font-size:9px;color:var(--tm);margin-top:6px;line-height:1.5;text-align:left">
+        <strong style="color:#3fb950">A</strong> &ge;90 Excellent &nbsp;
+        <strong style="color:#58a6ff">B</strong> &ge;75 Good<br>
+        <strong style="color:#ffa657">C</strong> &ge;60 Fair &nbsp;&nbsp;
+        <strong style="color:#f85149">D</strong> &ge;40 Poor &nbsp;
+        <strong style="color:#f85149">F</strong> &lt;40 Critical
+      </div>
+    </div>
+    <div style="position:relative;min-height:200px">
+      <canvas id="rrsChartRec" role="img" aria-label="Recovery readiness score breakdown" style="max-height:260px"></canvas>
+    </div>
+  </div>
+  {{if .Kasten.RecoveryReadiness.Findings}}
+  <div style="margin-top:14px">
+    <div style="font-size:11px;font-weight:600;color:var(--tm);margin-bottom:8px">Gaps to address:</div>
+    {{range .Kasten.RecoveryReadiness.Findings}}
+    <div style="font-size:12px;color:var(--red);padding:4px 0;border-bottom:1px solid var(--b)">⚠ {{.}}</div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+
+<!-- ══ DISASTER RECOVERY ══ -->
+<div class="sec" id="dr">
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(248,81,73,.1)">🔄</div><h2>Kasten Disaster Recovery</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Protects the K10 catalog itself &mdash; the database of all backup metadata. Without KDR, a cluster failure loses the ability to restore even if backup data exists in object storage.</span></span></div>
+  {{if .Kasten.DR.Enabled}}
+  <div class="twrap">
+    <table><tbody>
+      <tr><td>Status</td><td><span class="pill ok">Enabled</span></td></tr>
+      <tr><td>Mode</td><td>{{orDash .Kasten.DR.Mode}}</td></tr>
+      <tr><td>DR Policy</td><td class="mono">{{.Kasten.DR.BackupPolicy}}</td></tr>
+      <tr><td>Export Profile</td><td class="mono muted">{{orDash .Kasten.DR.ExportProfile}}</td></tr>
+      <tr><td>Last Run</td><td class="mono muted">{{fmtDate .Kasten.DR.LastRunTime}}</td></tr>
+      <tr><td>Last Status</td><td>{{if .Kasten.DR.LastRunStatus}}<span class="pill {{statusClass .Kasten.DR.LastRunStatus}}">{{.Kasten.DR.LastRunStatus}}</span>{{else}}—{{end}}</td></tr>
+    </tbody></table>
+  </div>
+  {{if .Kasten.MultiCluster.Clusters}}
+  <div style="margin-top:12px">
+    <div class="twrap tscroll">
+      <table><thead><tr><th>Remote Cluster</th><th>URL</th><th>Status</th><th>Version</th></tr></thead>
+      <tbody>{{range .Kasten.MultiCluster.Clusters}}<tr>
+        <td class="mono">{{.Name}}</td>
+        <td class="mono muted" style="font-size:11px">{{.URL}}</td>
+        <td><span class="pill {{statusClass .Status}}">{{.Status}}</span></td>
+        <td class="mono muted">{{orDash .Version}}</td>
+      </tr>{{end}}</tbody></table>
+    </div>
+  </div>{{end}}
+  {{else}}
+  <div class="alert warn">⚠️ No Kasten DR policy configured — the K10 catalog is not being backed up externally</div>
+  {{end}}
+</div>
+
+<!-- ══ RESTORE POINTS ══ -->
+<div class="sec" id="restorepoints">
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(63,185,80,.1)">💾</div><h2>Restore Points</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Saved backup copies for application recovery. Each point has a <strong>snapshot</strong> (local) and optionally an <strong>exported</strong> copy in object storage. <strong>Orphaned</strong>: no matching namespace &mdash; safe to delete to reclaim storage.</span></span><span class="sec-count">{{.Kasten.RestorePoints.Total}} total · {{.Kasten.RestorePoints.Orphaned}} orphaned</span></div>
+  {{if .Kasten.RestorePoints.ByApp}}
+  <div style="background:var(--s1);border:1px solid var(--b);border-radius:10px;padding:16px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin-bottom:10px">Restore points per application</div>
+    <div id="rpChartWrap" style="position:relative;height:180px"><canvas id="rpChart" role="img" aria-label="Restore points by application"></canvas></div>
+  </div>
+  {{end}}
+  <div class="two">
+    {{if .Kasten.RestorePoints.ByApp}}
+    <div class="twrap tscroll">
+      <table><thead><tr><th>Application</th><th>Restore Points</th></tr></thead>
+      <tbody>{{range $app,$count := .Kasten.RestorePoints.ByApp}}<tr>
+        <td class="mono">{{$app}}</td>
+        <td style="color:var(--green);font-family:'IBM Plex Mono',monospace;font-weight:600">{{$count}}</td>
+      </tr>{{end}}</tbody></table>
+    </div>{{end}}
+    {{if .Kasten.RestorePoints.ByPolicy}}
+    <div class="twrap tscroll">
+      <table><thead><tr><th>Policy</th><th>Restore Points</th></tr></thead>
+      <tbody>{{range $pol,$count := .Kasten.RestorePoints.ByPolicy}}<tr>
+        <td class="mono">{{$pol}}</td>
+        <td style="color:var(--blue);font-family:'IBM Plex Mono',monospace;font-weight:600">{{$count}}</td>
+      </tr>{{end}}</tbody></table>
+    </div>{{end}}
+  </div>
+  {{if .Kasten.RestorePoints.Details}}
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin:16px 0 8px">Restore Point Detail</div>
+  <div class="no-print" style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--tm)">Filter:</span>
+    <button class="job-filter-btn" data-rpddays="-1" onclick="filterRPDetail(-1)">Today</button>
+    <button class="job-filter-btn active" data-rpddays="0" onclick="filterRPDetail(0)">All time</button>
+    <button class="job-filter-btn" data-rpddays="7" onclick="filterRPDetail(7)">Last 7 days</button>
+    <button class="job-filter-btn" data-rpddays="30" onclick="filterRPDetail(30)">Last 30 days</button>
+    <button class="job-filter-btn" data-rpddays="90" onclick="filterRPDetail(90)">Last 90 days</button>
+    <span id="rpd-count" style="font-size:11px;color:var(--tm);margin-left:auto"></span>
+  </div>
+  <div class="twrap tscroll">
+    <table><thead><tr><th>Name</th><th>Application</th><th>Created</th><th>Policy</th></tr></thead>
+    <tbody>{{range .Kasten.RestorePoints.Details}}<tr class="rpd-row" data-rpddate="{{.CreatedAt}}">
+      <td class="mono" style="font-size:11px">{{.Name}}</td>
+      <td class="mono muted">{{orDash .AppName}}</td>
+      <td class="mono muted" style="font-size:11px;white-space:nowrap">{{formatTimeShort .CreatedAt}}</td>
+      <td class="mono muted" style="font-size:11px">{{orDash .Policy}}</td>
+    </tr>{{end}}</tbody></table>
+  </div>
+  {{end}}
+  {{if gt .Kasten.RestorePoints.Orphaned 0}}
+  <div class="alert warn" style="margin-top:12px">⚠️ {{.Kasten.RestorePoints.Orphaned}} orphaned restore point(s) — consuming storage without a matching application</div>
+  {{end}}
+</div>
+
+<!-- ══ APPLICATION RISK MATRIX ══ -->
+<div class="sec" id="app-risk-matrix">
+  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(248,81,73,.1)">📊</div><h2>Application Risk Matrix</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Per-application recovery risk. <strong>RPO now</strong>: age of the newest restore point (data you'd lose today). <strong>Est. RTO</strong>: rough time to recover. <strong>Export</strong>/<strong>Immutable</strong>: whether a secondary, tamper-proof copy exists. Use it to prioritize which apps to harden first.</span></span></div>
+  {{if .Kasten.AppRiskMatrix}}
+  <div class="twrap tscroll">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="border-bottom:1px solid var(--b)">
+        <th style="text-align:left;padding:6px 8px;color:var(--tm);font-weight:500">App</th>
+        <th style="padding:6px 8px;color:var(--tm);font-weight:500">Risk</th>
+        <th style="padding:6px 8px;color:var(--tm);font-weight:500">RPO now</th>
+        <th style="padding:6px 8px;color:var(--tm);font-weight:500">Est. RTO</th>
+        <th style="padding:6px 8px;color:var(--tm);font-weight:500">Export</th>
+        <th style="padding:6px 8px;color:var(--tm);font-weight:500">Immutable</th>
+        <th style="text-align:left;padding:6px 8px;color:var(--tm);font-weight:500">Notes</th>
+      </tr></thead>
+      <tbody>
+      {{range .Kasten.AppRiskMatrix}}<tr style="border-bottom:1px solid var(--b)">
+        <td style="padding:6px 8px;font-family:monospace">{{.Namespace}}</td>
+        <td style="padding:6px 8px;text-align:center">{{riskIcon .RiskLevel}}</td>
+        <td style="padding:6px 8px;text-align:center;color:{{if gt .RPOHours 168.0}}var(--red){{else if gt .RPOHours 24.0}}var(--yellow){{else}}var(--green){{end}}">
+          {{if gt .RPOHours 0.0}}{{printf "%.0fh" .RPOHours}}{{else}}—{{end}}</td>
+        <td style="padding:6px 8px;text-align:center;color:var(--tm)">
+          {{if gt .RTOMinutes 0.0}}{{printf "~%.0fm" .RTOMinutes}}{{else}}—{{end}}</td>
+        <td style="padding:6px 8px;text-align:center">{{if .HasExport}}✅{{else}}❌{{end}}</td>
+        <td style="padding:6px 8px;text-align:center">{{if .HasImmutable}}✅{{else}}❌{{end}}</td>
+        <td style="padding:6px 8px;color:var(--tm);font-size:11px">{{range .RiskReasons}}{{.}} {{end}}</td>
+      </tr>{{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="alert" style="margin-top:4px">No application risk data available — run against a cluster with protected applications.</div>
+  {{end}}
+</div>
+
+<script>
+(function(){
+  // Restore points chart (Recovery tab)
+  var rpData = JSON.parse('{{rpByAppJSON .Kasten.RestorePoints.ByApp}}');
+  var rpLabels = Object.keys(rpData);
+  var rpVals = rpLabels.map(function(k){return rpData[k];});
+  if(rpLabels.length === 0 && document.getElementById("rpChartWrap")) {
+    document.getElementById("rpChartWrap").innerHTML =
+      '<div style="height:160px;display:flex;align-items:center;justify-content:center;color:#8b949e;font-size:12px;text-align:center;padding:0 20px">No restore points yet &mdash; run a policy manually to create the first backup</div>';
+  } else if(rpLabels.length > 0 && document.getElementById("rpChart")) {
+    var rpH = Math.max(rpLabels.length * 36 + 60, 160);
+    document.getElementById("rpChartWrap").style.height = rpH + "px";
+    new Chart(document.getElementById("rpChart"), {
+      type: "bar",
+      data: {
+        labels: rpLabels,
+        datasets: [{label:"Restore points", data:rpVals, backgroundColor:"#3fb950", borderRadius:4, barThickness:18}]
+      },
+      options: {
+        indexAxis:"y", responsive:true, maintainAspectRatio:false,
+        scales:{x:{grid:{color:"rgba(139,148,158,0.12)"},border:{display:false}},
+                y:{grid:{display:false},ticks:{font:{size:10},color:"#8b949e"}}},
+        plugins:{legend:{display:false}}
+      }
+    });
+  }
+
+  // Recovery Readiness Score chart (Recovery tab)
+  var rrsEl = document.getElementById("rrsChartRec");
+  if(rrsEl){
+    var rrs = JSON.parse('{{rrsJSON .Kasten.RecoveryReadiness}}');
+    if(rrs && rrs.labels){
+      var earned = rrs.earned;
+      var gaps = rrs.max.map(function(m,i){return m - earned[i];});
+      new Chart(rrsEl, {
+        type: "bar",
+        data: {
+          labels: rrs.labels,
+          datasets: [
+            {label:"Earned", data:earned, backgroundColor:"#3fb950", borderWidth:0, borderRadius:3},
+            {label:"Gap",    data:gaps,   backgroundColor:"rgba(248,81,73,0.25)", borderWidth:0, borderRadius:3}
+          ]
+        },
+        options: {
+          indexAxis:"y", responsive:true, maintainAspectRatio:false,
+          scales:{
+            x:{stacked:true, max:25, grid:{color:"rgba(139,148,158,0.12)"}, ticks:{stepSize:5}},
+            y:{stacked:true, grid:{display:false}, ticks:{font:{size:10}}}
+          },
+          plugins:{legend:{display:false},tooltip:{callbacks:{
+            label:function(c){
+              if(c.datasetIndex===0) return " Earned: "+c.raw;
+              return " Gap: "+c.raw;
+            }
+          }}}
+        }
+      });
+    }
+  }
+})();
+</script>
+
+</div><!-- /tab-recovery -->
+
 <div class="tabpanel" id="tab-operations">
 
 <!-- ══ JOBS ══ -->
@@ -941,87 +1138,6 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
 </div>
 {{end}}
 
-<!-- ══ RESTORE POINTS ══ -->
-<div class="sec" id="restorepoints">
-  <div class="sec-hdr"><div class="sec-icon" style="background:rgba(63,185,80,.1)">💾</div><h2>Restore Points</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Saved backup copies for application recovery. Each point has a <strong>snapshot</strong> (local) and optionally an <strong>exported</strong> copy in object storage. <strong>Orphaned</strong>: no matching namespace &mdash; safe to delete to reclaim storage.</span></span><span class="sec-count">{{.Kasten.RestorePoints.Total}} total · {{.Kasten.RestorePoints.Orphaned}} orphaned</span></div>
-  {{if .Kasten.RestorePoints.ByApp}}
-  <div style="background:var(--s1);border:1px solid var(--b);border-radius:10px;padding:16px;margin-bottom:14px">
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin-bottom:10px">Restore points per application</div>
-    <div id="rpChartWrap" style="position:relative;height:180px"><canvas id="rpChart" role="img" aria-label="Restore points by application"></canvas></div>
-  </div>
-  {{end}}
-  <div class="two">
-    {{if .Kasten.RestorePoints.ByApp}}
-    <div class="twrap tscroll">
-      <table><thead><tr><th>Application</th><th>Restore Points</th></tr></thead>
-      <tbody>{{range $app,$count := .Kasten.RestorePoints.ByApp}}<tr>
-        <td class="mono">{{$app}}</td>
-        <td style="color:var(--green);font-family:'IBM Plex Mono',monospace;font-weight:600">{{$count}}</td>
-      </tr>{{end}}</tbody></table>
-    </div>{{end}}
-    {{if .Kasten.RestorePoints.ByPolicy}}
-    <div class="twrap tscroll">
-      <table><thead><tr><th>Policy</th><th>Restore Points</th></tr></thead>
-      <tbody>{{range $pol,$count := .Kasten.RestorePoints.ByPolicy}}<tr>
-        <td class="mono">{{$pol}}</td>
-        <td style="color:var(--blue);font-family:'IBM Plex Mono',monospace;font-weight:600">{{$count}}</td>
-      </tr>{{end}}</tbody></table>
-    </div>{{end}}
-  </div>
-  {{if .Kasten.RestorePoints.Details}}
-  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin:16px 0 8px">Restore Point Detail</div>
-  <div class="no-print" style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
-    <span style="font-size:11px;color:var(--tm)">Filter:</span>
-    <button class="job-filter-btn" data-rpddays="-1" onclick="filterRPDetail(-1)">Today</button>
-    <button class="job-filter-btn active" data-rpddays="0" onclick="filterRPDetail(0)">All time</button>
-    <button class="job-filter-btn" data-rpddays="7" onclick="filterRPDetail(7)">Last 7 days</button>
-    <button class="job-filter-btn" data-rpddays="30" onclick="filterRPDetail(30)">Last 30 days</button>
-    <button class="job-filter-btn" data-rpddays="90" onclick="filterRPDetail(90)">Last 90 days</button>
-    <span id="rpd-count" style="font-size:11px;color:var(--tm);margin-left:auto"></span>
-  </div>
-  <div class="twrap tscroll">
-    <table><thead><tr><th>Name</th><th>Application</th><th>Created</th><th>Policy</th></tr></thead>
-    <tbody>{{range .Kasten.RestorePoints.Details}}<tr class="rpd-row" data-rpddate="{{.CreatedAt}}">
-      <td class="mono" style="font-size:11px">{{.Name}}</td>
-      <td class="mono muted">{{orDash .AppName}}</td>
-      <td class="mono muted" style="font-size:11px;white-space:nowrap">{{formatTimeShort .CreatedAt}}</td>
-      <td class="mono muted" style="font-size:11px">{{orDash .Policy}}</td>
-    </tr>{{end}}</tbody></table>
-  </div>
-  {{end}}
-  {{if gt .Kasten.RestorePoints.Orphaned 0}}
-  <div class="alert warn" style="margin-top:12px">⚠️ {{.Kasten.RestorePoints.Orphaned}} orphaned restore point(s) — consuming storage without a matching application</div>
-  {{end}}
-</div>
-
-<script>
-(function(){
-  // Restore points chart (moved from Protection tab)
-  var rpData = JSON.parse('{{rpByAppJSON .Kasten.RestorePoints.ByApp}}');
-  var rpLabels = Object.keys(rpData);
-  var rpVals = rpLabels.map(function(k){return rpData[k];});
-  if(rpLabels.length === 0 && document.getElementById("rpChartWrap")) {
-    document.getElementById("rpChartWrap").innerHTML =
-      '<div style="height:160px;display:flex;align-items:center;justify-content:center;color:#8b949e;font-size:12px;text-align:center;padding:0 20px">No restore points yet &mdash; run a policy manually to create the first backup</div>';
-  } else if(rpLabels.length > 0 && document.getElementById("rpChart")) {
-    var rpH = Math.max(rpLabels.length * 36 + 60, 160);
-    document.getElementById("rpChartWrap").style.height = rpH + "px";
-    new Chart(document.getElementById("rpChart"), {
-      type: "bar",
-      data: {
-        labels: rpLabels,
-        datasets: [{label:"Restore points", data:rpVals, backgroundColor:"#3fb950", borderRadius:4, barThickness:18}]
-      },
-      options: {
-        indexAxis:"y", responsive:true, maintainAspectRatio:false,
-        scales:{x:{grid:{color:"rgba(139,148,158,0.12)"},border:{display:false}},
-                y:{grid:{display:false},ticks:{font:{size:10},color:"#8b949e"}}},
-        plugins:{legend:{display:false}}
-      }
-    });
-  }
-})();
-</script>
 <!-- ══ K10 REPORTS ══ -->
 {{if .Kasten.K10Reports}}
 <div class="sec" id="k10-reports">

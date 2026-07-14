@@ -615,6 +615,21 @@ func (b *pptxBuilder) slide5Jobs(js interface{}, jobs interface{}, sucRate int, 
 		failClr = cVRed
 	}
 
+	pctCard := func(rate int, ok bool) (string, string) {
+		if !ok {
+			return "n/a", cVGray
+		}
+		clr := cVGreen
+		if rate < 70 {
+			clr = cVRed
+		}
+		return fmt.Sprintf("%d%%", rate), clr
+	}
+	snapRate, snapOK := actionSuccessPct(jsum, "backup")
+	expRate, expOK := actionSuccessPct(jsum, "export")
+	snapVal, snapClr := pctCard(snapRate, snapOK)
+	expVal, expClr := pctCard(expRate, expOK)
+
 	type stat struct{ label, val, color string }
 	for i, s := range []stat{
 		{"Total jobs", fmt.Sprint(total), cVText},
@@ -622,11 +637,13 @@ func (b *pptxBuilder) slide5Jobs(js interface{}, jobs interface{}, sucRate int, 
 		{"Failed", fmt.Sprint(failed), failClr},
 		{"Skipped", fmt.Sprint(skipped), cVGray},
 		{"Success rate (7d)", fmt.Sprintf("%d%%", sucRate), rateClr},
+		{"Snapshot success", snapVal, snapClr},
+		{"Export success", expVal, expClr},
 	} {
-		y := 1.2 + float64(i)*0.72
-		out += rect(6.8, y, 2.9, 0.62, cVWhite)
-		out += txb(6.95, y+0.04, 2.6, 0.25, s.label, cVGray, 9, false, "l")
-		out += txb(6.95, y+0.3, 2.6, 0.28, s.val, s.color, 16, true, "l")
+		y := 1.15 + float64(i)*0.6
+		out += rect(6.8, y, 2.9, 0.52, cVWhite)
+		out += txb(6.95, y+0.03, 2.6, 0.22, s.label, cVGray, 9, false, "l")
+		out += txb(6.95, y+0.26, 2.6, 0.26, s.val, s.color, 15, true, "l")
 	}
 
 	out += b.veeamFooter()
@@ -1218,6 +1235,26 @@ func boolColor(b bool) string {
 		return cVGreen
 	}
 	return cVRed
+}
+
+// actionSuccessPct returns the success-rate percentage for a K10 action
+// (e.g. "backup" for snapshots, "export") from a marshaled JobSummary, and
+// whether an actionable outcome exists (false → show "n/a").
+func actionSuccessPct(jsum map[string]interface{}, action string) (int, bool) {
+	arr, ok := jsum["successByAction"].([]interface{})
+	if !ok {
+		return 0, false
+	}
+	for _, it := range arr {
+		m, ok := it.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if strVal(m, "action") == action && intVal(m, "total") > 0 {
+			return int(math.Round(floatVal(m, "successRate"))), true
+		}
+	}
+	return 0, false
 }
 
 func strVal(m map[string]interface{}, key string) string {

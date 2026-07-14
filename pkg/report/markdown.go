@@ -275,6 +275,17 @@ func WriteMarkdown(path string, d *Data) error {
 			w("- **%s**: %d", action, count)
 		}
 	}
+	if len(jsum.SuccessByAction) > 0 {
+		w("")
+		w("Success rate by action (in K10 `backup` = snapshot):")
+		for _, a := range jsum.SuccessByAction {
+			if a.Total > 0 {
+				w("- **%s**: %.0f%% (%d/%d)", a.Action, a.SuccessRate, a.Completed, a.Total)
+			} else {
+				w("- **%s**: n/a", a.Action)
+			}
+		}
+	}
 
 	// ── K10 Generated Reports ────────────────────────────────────────────────
 	if len(d.Kasten.K10Reports) > 0 {

@@ -13,6 +13,17 @@ no runtime dependencies, no changes to the cluster, no `kubectl` required.
 
 ---
 
+## What's New in v1.3.1
+
+### Per-action success rate (snapshot / export)
+The report now breaks the success rate down **by action** — the direct answer to KPIs like "%snapshot success rate" and "%export success rate" (in K10 the `backup` action is the snapshot):
+
+- **HTML** — new *Success Rate by Action* rows in the Overview → Compliance & SLA card.
+- **JSON** — `kasten.jobSummary.successByAction` gives, per action (`backup`/snapshot, `export`, `restore`), the completed/failed counts and the `successRate` (%). Skipped, Running and Cancelled are excluded from the denominator.
+- **Authoritative source** — `kasten.k10Reports[].stats.actions` now retains per-action `snapshotCompleted/Failed`, `exportCompleted/Failed` and `restoreCompleted/Failed` straight from the K10 report, independent of the job-collection window (ideal for multi-cluster aggregation).
+
+---
+
 ## What's New in v1.3
 
 ### Health Check tab (new)

@@ -24,8 +24,9 @@ A dedicated **Recovery** tab groups everything that answers *"can we actually re
 - **Consistency** — backup-recency (BP-16) and the Diagnostics view now inherit the same corrected last-backup value used by the Recovery Readiness Score and Risk Matrix, so all four outputs (HTML / JSON / Markdown / PPTX) tell the same story.
 
 ### Report polish
-- **Charts render on tab open** — donut/bar charts that live in non-default tabs (Storage, PVC health, etc.) now redraw correctly when you switch to their tab, instead of appearing blank.
+- **Fixed blank Storage-tab charts** — the *Storage type breakdown* and *PVC health* donuts appeared empty due to a script error (a dedup-ratio value handled as text instead of a number). Both now render.
 - **Storage breakdown** — dropped the permanently-empty "Export by application" card; the storage-type donut is now full-width.
+- Charts in non-default tabs also redraw on tab switch, so nothing stays blank when you navigate.
 
 📖 Full version history: see [CHANGELOG.md](CHANGELOG.md).
 

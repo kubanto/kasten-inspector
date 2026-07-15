@@ -4,6 +4,13 @@ All notable changes to Kasten Inspector are documented here.
 
 ---
 
+## [1.5.4] — 2026-07-15
+
+### Fixed
+- **Storage-tab donuts (Storage type breakdown + PVC health) rendered blank.** Root cause: `expDedup` was emitted via `{{printf "%.2f" ...}}`, which returns a string that `html/template` quotes in the `<script>` context (`var expDedup = "1.96";`). The KPI code then called `expDedup.toFixed(1)`, throwing a `TypeError` that aborted the entire storage `<script>` IIFE **before** the two `new Chart(...)` calls — so both donuts were never created (all other tabs' charts, in separate scripts, were unaffected). Now emits the raw float (`var expDedup = 1.96…;`) like the other numeric fields. (The v1.5.3 tab-switch `resize()` and empty-card removal remain, but this `TypeError` was the actual cause of the blank charts.)
+
+---
+
 ## [1.5.3] — 2026-07-15
 
 ### Fixed

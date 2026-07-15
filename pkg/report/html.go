@@ -1340,7 +1340,7 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
   var expBytes  = {{.Kasten.Storage.ExportSizeBytes}};
   var liveBytes = {{.Kasten.Storage.LiveSizeBytes}};
   var snapCount = {{.Kasten.Storage.SnapshotCount}};
-  var expDedup  = {{printf "%.2f" .Kasten.Storage.DedupeRatio}};
+  var expDedup  = {{.Kasten.Storage.DedupeRatio}};  {{/* raw float — printf returns a string that html/template quotes, breaking expDedup.toFixed() */}}
   var liveVols  = {{.Kasten.Storage.LiveVolumeCount}};
 
   function humanBytes(b) {

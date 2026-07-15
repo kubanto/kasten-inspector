@@ -1,5 +1,5 @@
 BINARY  := kasten-inspector
-VERSION := 1.5.2
+VERSION := 1.5.3
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 # Generates go.sum and downloads all modules.

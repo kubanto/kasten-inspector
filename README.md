@@ -23,6 +23,10 @@ A dedicated **Recovery** tab groups everything that answers *"can we actually re
 - **Restore-point total** — now includes restore points in system/DR namespaces (KDR catalog in `kasten-io`, etcd backups), reflecting the whole cluster instead of user-app namespaces only.
 - **Consistency** — backup-recency (BP-16) and the Diagnostics view now inherit the same corrected last-backup value used by the Recovery Readiness Score and Risk Matrix, so all four outputs (HTML / JSON / Markdown / PPTX) tell the same story.
 
+### Report polish
+- **Charts render on tab open** — donut/bar charts that live in non-default tabs (Storage, PVC health, etc.) now redraw correctly when you switch to their tab, instead of appearing blank.
+- **Storage breakdown** — dropped the permanently-empty "Export by application" card; the storage-type donut is now full-width.
+
 📖 Full version history: see [CHANGELOG.md](CHANGELOG.md).
 
 ---

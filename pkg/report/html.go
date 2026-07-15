@@ -1282,9 +1282,9 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
 <div class="sec" id="storage-charts">
   <div class="sec-hdr">
     <div class="sec-icon" style="background:rgba(63,185,80,.1)">📊</div>
-    <h2>Storage breakdown</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box">Storage data breakdown. <strong>Storage type breakdown</strong>: visual split of snapshot (local K10 copies), export (object storage copies), and live PVC data — populated when K10 has storage metrics. <strong>Export by application</strong>: which apps use the most export storage — requires the <em>k10-system-reports-policy</em> to have run at least once. Both charts are empty if K10 has not collected storage metrics yet.</span></span>
+    <h2>Storage breakdown</h2><span class="tip-wrap"><span class="tip-btn" tabindex="0">?</span><span class="tip-box"><strong>Storage type breakdown</strong>: visual split of snapshot (local K10 copies), export (object storage copies), and live PVC data — populated from the K10 system report. {{if .Kasten.Storage.ExportByApp}}<strong>Export by application</strong>: which apps consume the most export storage.{{end}}</span></span>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <div style="display:grid;grid-template-columns:{{if .Kasten.Storage.ExportByApp}}1fr 1fr{{else}}1fr{{end}};gap:14px">
     <div class="stat-chart-card">
       <div class="stat-chart-title">Storage type breakdown</div>
       <div style="position:relative;height:200px"><canvas id="storTypeChart" role="img" aria-label="Storage breakdown by type">Storage type breakdown.</canvas></div>
@@ -1292,11 +1292,7 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
     {{if .Kasten.Storage.ExportByApp}}
     <div class="stat-chart-card">
       <div class="stat-chart-title">Export storage by application</div>
-      <div style="position:relative" id="storAppWrap" style="height:200px"><canvas id="storAppChart" role="img" aria-label="Export storage by application">Export by application.</canvas></div>
-    </div>
-    {{else}}
-    <div class="stat-chart-card" style="display:flex;align-items:center;justify-content:center;color:var(--tm);font-size:12px">
-      <span>Export breakdown by application not available — run the k10-system-reports-policy to populate this data.</span>
+      <div id="storAppWrap" style="position:relative;height:200px"><canvas id="storAppChart" role="img" aria-label="Export storage by application">Export by application.</canvas></div>
     </div>
     {{end}}
   </div>
@@ -1681,7 +1677,18 @@ td{padding:8px 12px;font-size:13px;vertical-align:middle}
       panels.forEach(function(p){ p.classList.remove('active'); });
       this.classList.add('active');
       var panel = document.getElementById(target);
-      if(panel) panel.classList.add('active');
+      if(panel) {
+        panel.classList.add('active');
+        // Charts created while their tab was hidden (display:none) may have
+        // measured a zero-size canvas. Now that the panel is visible, force any
+        // Chart.js instances inside it to recompute their size and redraw.
+        if(window.Chart && Chart.getChart) {
+          panel.querySelectorAll('canvas').forEach(function(cv){
+            var ch = Chart.getChart(cv);
+            if(ch) { ch.resize(); }
+          });
+        }
+      }
       window.scrollTo(0,0);
       // Re-apply job filter when switching to Operations tab (preserves state)
       if(target === 'tab-operations' && typeof applyCurrentFilter === 'function') {

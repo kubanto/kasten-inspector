@@ -4,6 +4,16 @@ All notable changes to Kasten Inspector are documented here.
 
 ---
 
+## [1.5.3] — 2026-07-15
+
+### Fixed
+- **Charts blank in non-default tabs** — Chart.js instances created while their tab was hidden (`display:none`) measured a zero-size canvas and did not redraw when the tab was opened. The tab switcher now calls `chart.resize()` on every Chart.js canvas in the newly-activated panel, so the Storage donuts, PVC health donut, and all other off-screen charts render correctly on first view.
+
+### Changed
+- **Storage breakdown** — removed the permanently-empty "Export storage by application" card and its misleading "run the k10-system-reports-policy" hint. The per-application export field (`Storage.ExportByApp`) is not currently populated by the collector, so the card never had data; the "Storage type breakdown" donut now spans the full width. (The card will return if/when per-app export data is collected.)
+
+---
+
 ## [1.5.2] — 2026-07-15
 
 ### Fixed

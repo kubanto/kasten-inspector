@@ -122,8 +122,6 @@ func CollectAll(c *cluster.Client, opts CollectOptions) (*Data, error) {
 	d.LongRunningActions, err = collectLongRunningActions(c, ns)
 	warn("stuck actions", err)
 
-	d.BackupRecency = collectBackupRecency(d.Jobs, d.Applications)
-
 	d.StorageClasses, d.VolumeSnapshotClasses, d.CSIWarnings, err = collectVolumeProvisionerAudit(c)
 	warn("storageclass/vsc inventory", err)
 
@@ -132,6 +130,11 @@ func CollectAll(c *cluster.Client, opts CollectOptions) (*Data, error) {
 	enrichPolicyLastRun(d)
 	enrichAppLastBackup(d)
 	enrichDRFromPolicies(d)
+
+	// Must run AFTER enrichAppLastBackup so backup-recency (and BP-16) inherit the
+	// corrected per-app LastBackup (run actions + restore-point fallback) instead of
+	// relying solely on job AppName mapping, which misses out-of-window backups.
+	d.BackupRecency = collectBackupRecency(d.Jobs, d.Applications)
 
 	// ── Compliance & Best Practices ───────────────────────────────────────────
 	d.Compliance = computeCompliance(d)

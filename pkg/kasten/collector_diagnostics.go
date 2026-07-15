@@ -217,6 +217,14 @@ func collectBackupRecency(jobs []Job, apps AppSummary) []NamespaceBackupRecency 
 		if app.Protected {
 			entries[ns].protected = true
 		}
+		// Seed from the app's enriched last-backup (run actions + restore-point
+		// fallback). Keeps recency / BP-16 consistent with the readiness and risk
+		// views when the backup action itself is outside the collected job window.
+		if app.LastBackup != "" {
+			if t, err := time.Parse(time.RFC3339, app.LastBackup); err == nil && t.After(entries[ns].lastBackup) {
+				entries[ns].lastBackup = t
+			}
+		}
 	}
 
 	// Enrich with actual job timestamps

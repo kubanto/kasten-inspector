@@ -13,90 +13,17 @@ no runtime dependencies, no changes to the cluster, no `kubectl` required.
 
 ---
 
-## What's New in v1.4.0
+## What's New in v1.5
 
-- **Per-action success rate in Markdown & PPTX** — the %snapshot / %export success KPI now also appears in the Markdown summary and in the QBR deck's "Job History & Success Rate" slide (Snapshot success + Export success cards).
-- **Report tab reorganization** — Catalog and StorageClass/VSC inventory moved to Storage; Restore Points consolidated under Operations; Failures by Policy rendered in Diagnostics; security flags shown once under Security.
-- **Fixed** — QBR PowerPoint no longer prompts to "repair" when `--tam` is omitted or when the customer/TAM name contains `<`, `>` or `&`.
+### Recovery tab (new)
+A dedicated **Recovery** tab groups everything that answers *"can we actually recover?"* — Recovery Readiness Score, Kasten Disaster Recovery (KDR), Restore Points, and the Application Risk Matrix — sitting between Protection and Operations in the nav.
 
----
+### Data-correctness fixes
+- **"Never backed up" false positive** — applications with real restore points (backed up on-demand, outside the collected job window) were wrongly flagged as *never backed up*. Last-backup now falls back to the newest restore point, so they correctly show as recent or stale.
+- **Restore-point total** — now includes restore points in system/DR namespaces (KDR catalog in `kasten-io`, etcd backups), reflecting the whole cluster instead of user-app namespaces only.
+- **Consistency** — backup-recency (BP-16) and the Diagnostics view now inherit the same corrected last-backup value used by the Recovery Readiness Score and Risk Matrix, so all four outputs (HTML / JSON / Markdown / PPTX) tell the same story.
 
-## What's New in v1.3.1
-
-### Per-action success rate (snapshot / export)
-The report now breaks the success rate down **by action** — the direct answer to KPIs like "%snapshot success rate" and "%export success rate" (in K10 the `backup` action is the snapshot):
-
-- **HTML** — new *Success Rate by Action* rows in the Overview → Compliance & SLA card.
-- **JSON** — `kasten.jobSummary.successByAction` gives, per action (`backup`/snapshot, `export`, `restore`), the completed/failed counts and the `successRate` (%). Skipped, Running and Cancelled are excluded from the denominator.
-- **Authoritative source** — `kasten.k10Reports[].stats.actions` now retains per-action `snapshotCompleted/Failed`, `exportCompleted/Failed` and `restoreCompleted/Failed` straight from the K10 report, independent of the job-collection window (ideal for multi-cluster aggregation).
-
----
-
-## What's New in v1.3
-
-### Health Check tab (new)
-All cluster and K10 installation health information is now consolidated in a single dedicated tab: Cluster info, License, Security (auth + encryption), K10 Resource Limits, Disaster Recovery status, StorageClass & VSC inventory.
-
-### Best Practices (25 total, up from 17)
-| ID | Check | Severity |
-|----|-------|----------|
-| BP-01 | Application protection coverage | critical |
-| BP-02 | Backup encryption at rest | warning |
-| BP-03 | Immutable backup storage | info |
-| BP-04 | Multiple location profiles (3-2-1 rule) | warning |
-| BP-05 | Policies have export (offsite copy) | warning |
-| BP-06 | Authentication method configured | critical |
-| BP-07 | Disaster Recovery (KDR) configured | warning |
-| BP-08 | Prometheus monitoring enabled | info |
-| BP-09 | No orphaned restore points | info |
-| BP-10 | All non-system namespaces protected | warning |
-| BP-11 | K10 pods have resource limits | warning |
-| BP-12 | Snapshot retention within safe bounds | warning |
-| BP-13 | At least one snapshot retained per policy | warning |
-| BP-14 | Export retention explicitly configured | warning |
-| BP-15 | CSI provisioners have snapshot capability | warning |
-| BP-16 | Protected namespaces: backup recency within 7 days | warning |
-| BP-17 | Restore test performed at least once | critical |
-| BP-18 | Dashboard exposed via Ingress with HTTPS | warning |
-| BP-19 | VolumeSnapshotClass has Kasten annotation (`k10.kasten.io/is-snapshot-class=true`) | **critical** |
-| BP-20 | No policies with wildcard namespace selector | warning |
-| BP-21 | Dedicated policy for cluster-scoped resources | warning |
-| BP-22 | Location profiles use object storage (not NFS/SMB only) | warning |
-| BP-23 | PolicyPresets defined for retention standardization | info |
-| BP-24 | Catalog storage ≥50% free (upgrade prerequisite) | warning |
-| BP-25 | Prometheus alert rules (PrometheusRule CRs) configured | info |
-
-### Report tab structure (v1.3)
-| Tab | Content |
-|-----|---------|
-| **Overview** | Executive Summary, Best Practices alerts, Compliance & SLA |
-| **Health Check** ← new | Cluster, License, Security, Resource Limits, DR status, CSI inventory |
-| **Protection** | Policies, Applications, Profiles, KubeVirt, Coverage matrix |
-| **Operations** | Jobs (Today/date-range filters), Restore Points, K10 Reports, Actions summary |
-| **Storage** | Storage Overview, Breakdown, PVC status |
-| **Configuration** | Kanister Blueprints & TransformSets |
-| **Statistics & QBR** | KPI grid, charts, Recovery Readiness Score, App Risk Matrix |
-| **Diagnostics** | Recent Failures, Long-running Actions, Backup Recency |
-
-### Fixes
-- Storage report date now always picks the most recent K10 Report CR (was using arbitrary ordering)
-- K10 version detection: SHA256 digest image tags no longer shown as version (falls back to K10 Report CRD)
-- License section populated from K10 8.x `status.licenseInfo` nested fields
-- Infrastructure profiles (vSphere) correctly classified
-- Restore points by namespace: bar chart added to left panel
-
----
-
-## What's New in v1.2
-
-### QBR & Reporting
-- **PowerPoint QBR deck** (`--pptx`) — 11-slide deck ready to present
-- **Recovery Readiness Score** — composite score (0–100, grade A–F)
-- **Application Risk Matrix** — per-namespace RPO/RTO estimate with risk level
-- **Statistics & QBR dashboard** — interactive HTML tab with charts and trends
-
-### Diagnostics
-- Recent Failures, Long-running Actions, Backup Recency per Namespace, StorageClass & VSC Inventory
+📖 Full version history: see [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -163,12 +90,14 @@ The JSON output can be used to regenerate the PPTX later without reconnecting to
 | Tab | Content |
 |-----|---------|
 | **Overview** | Cluster info, Executive Summary, Best Practices (summary), Compliance & SLA |
-| **Protection** | KPI banner, Security config, Policies, Applications, Location Profiles, KubeVirt VMs, Policy frequencies, Coverage matrix, PVC status, Restore points |
-| **Operations** | Kasten Disaster Recovery, Recent Jobs (filterable), Restore Points detail, K10 Generated Reports, Actions summary |
-| **Storage** | Storage Overview (with report age banner), Storage breakdown |
-| **Configuration** | Kanister Blueprints & TransformSets, K10 Resource Limits, License |
+| **Health Check** | Cluster, License, Security (auth + encryption), K10 Resource Limits |
+| **Protection** | KPI banner, Policies, Applications, Location Profiles, KubeVirt VMs, Policy frequencies, Coverage matrix |
+| **Recovery** | Recovery Readiness Score, Kasten Disaster Recovery (KDR), Restore Points, Application Risk Matrix |
+| **Operations** | Recent Jobs (filterable), Job Execution Trend, K10 Generated Reports, Actions summary |
+| **Storage** | Storage Overview (with report age banner), Catalog, Storage breakdown, PVC status, StorageClass & VSC inventory |
+| **Configuration** | Kanister Blueprints & TransformSets |
 | **Statistics & QBR** | KPI grid, NS Protection chart, Job Outcome chart, BP Score, Monthly trend, Security posture, Concurrency Limiters, Recovery Readiness Score, App Risk Matrix, Gaps, Weekly SLA trend |
-| **Diagnostics** | Recent Failures, Long-running Actions, Backup Recency, StorageClass & VSC Inventory |
+| **Diagnostics** | Recent Failures, Failures by Policy, Long-running Actions, Backup Recency |
 
 ---
 

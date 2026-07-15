@@ -4,6 +4,33 @@ All notable changes to Kasten Inspector are documented here.
 
 ---
 
+## [1.5.2] — 2026-07-15
+
+### Fixed
+- Backup-recency (`collectBackupRecency`, feeding best-practice **BP-16** and the Diagnostics "Backup Recency per Namespace" view) mapped jobs to namespaces via `Job.AppName`, which fails for protected apps in K10 8.x — every protected namespace was reported as "never backed up" even with recent backups. It now runs **after** `enrichAppLastBackup` and seeds each namespace's last-backup from the corrected per-app value, so BP-16, the Recovery Readiness Score, and the Application Risk Matrix agree across HTML/JSON/Markdown/PPTX.
+
+---
+
+## [1.5.1] — 2026-07-15
+
+### Fixed
+- **"Never backed up" false positive** — `enrichAppLastBackup` derived an app's last-backup only from completed `run` actions inside the collected job window, so apps whose backups ran on-demand or outside that window were flagged as never backed up despite having real restore points. Added a fallback to the newest restore point per app (mirroring the Application Risk Matrix), correctly reclassifying them as recent or stale.
+- **Restore-point total under-count** — `collectRestorePoints` only iterated user-application namespaces, missing restore points in system/DR namespaces (KDR catalog in `kasten-io`, etcd backups in `openshift-etcd`). Added a supplementary all-namespaces pass (Strategy 1b) that includes them, marked non-orphaned, so the total reflects the whole cluster.
+
+---
+
+## [1.5.0] — 2026-07-15
+
+### Added
+- **New "Recovery" tab** grouping the recovery-readiness story in one place: Recovery Readiness Score, Kasten Disaster Recovery (KDR), Restore Points, and the Application Risk Matrix. Placed between Protection and Operations.
+
+### Changed
+- Kasten Disaster Recovery moved from **Health Check** → **Recovery**.
+- Restore Points (chart + detail tables) moved from **Operations** → **Recovery**.
+- Recovery Readiness Score and Application Risk Matrix now also appear in the **Recovery** tab (kept in **Statistics & QBR** as well; chart element IDs de-duplicated so both instances render).
+
+---
+
 ## [1.4.0] — 2026-07-14
 
 ### Added

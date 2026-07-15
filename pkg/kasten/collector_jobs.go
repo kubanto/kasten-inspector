@@ -299,8 +299,31 @@ func enrichAppLastBackup(d *Data) {
 		}
 	}
 
+	// Fallback: most recent restore point per app. A restore point proves a backup
+	// occurred even when the completing "run" action is outside the collected job
+	// window or never reached Complete (e.g. on-demand policies). Without this, apps
+	// with real restore points were wrongly reported as "never backed up".
+	newestRP := map[string]string{}
+	for _, rp := range d.RestorePoints.Details {
+		if rp.AppName == "" || rp.CreatedAt == "" {
+			continue
+		}
+		if prev, ok := newestRP[rp.AppName]; !ok || rp.CreatedAt > prev {
+			newestRP[rp.AppName] = rp.CreatedAt
+		}
+	}
+
 	for i, app := range d.Applications.Apps {
 		if t, ok := latestRun[app.Namespace]; ok {
+			d.Applications.Apps[i].LastBackup = t
+			continue
+		}
+		if d.Applications.Apps[i].LastBackup != "" {
+			continue
+		}
+		if t, ok := newestRP[app.Name]; ok {
+			d.Applications.Apps[i].LastBackup = t
+		} else if t, ok := newestRP[app.Namespace]; ok {
 			d.Applications.Apps[i].LastBackup = t
 		}
 	}

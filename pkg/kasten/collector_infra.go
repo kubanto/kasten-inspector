@@ -75,6 +75,50 @@ func collectRestorePoints(c *cluster.Client, ns string, apps AppSummary) (Restor
 		}
 	}
 
+	// Strategy 1b: include restore points that live in namespaces NOT tracked as user
+	// applications — e.g. the KDR catalog in kasten-io and etcd backups in
+	// openshift-etcd. Strategy 1 only iterates user-app namespaces, so without this
+	// the cluster total under-reports and DR/etcd restore points never appear in the
+	// Recovery view. Only runs when Strategy 1 succeeded (fallbacks below are exclusive).
+	if found > 0 {
+		appNS := map[string]bool{}
+		for _, app := range apps.Apps {
+			appNS[app.Namespace] = true
+		}
+		if allRP, err := c.Dynamic.Resource(GVRRestorePoint).Namespace("").List(ctx, metav1.ListOptions{}); err == nil {
+			for _, item := range allRP.Items {
+				obj := item.Object
+				rpNS := MetaNamespace(obj)
+				if appNS[rpNS] {
+					continue // already counted in Strategy 1
+				}
+				labels := GetLabels(obj)
+				appName := labelStr(labels, "apps.kio.kasten.io/appName")
+				if appName == "" {
+					appName = rpNS
+				}
+				polName := labelStr(labels, "policies.kio.kasten.io/policy-name")
+				ts := MetaTimestamp(obj)
+
+				info.Total++
+				info.ByApp[appName]++
+				if polName != "" {
+					info.ByPolicy[polName]++
+				}
+				info.Details = append(info.Details, RestorePoint{
+					Name:      MetaName(obj),
+					AppName:   appName,
+					Policy:    polName,
+					CreatedAt: ts,
+					Orphaned:  false, // system / DR catalog backups are never orphaned
+				})
+				if t, err := time.Parse(time.RFC3339, ts); err == nil {
+					times = append(times, t)
+				}
+			}
+		}
+	}
+
 	// Strategy 2: fallback — restorepointcontents in kasten-io (cluster-scoped index)
 	if found == 0 {
 		rpcList, err := c.Dynamic.Resource(gvrRestorePointContent).Namespace(ns).List(ctx, metav1.ListOptions{})
